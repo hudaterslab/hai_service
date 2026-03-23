@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  vms-edge start
+  vms-edge stop
+  vms-edge restart
+  vms-edge status
+  vms-edge logs [service...]
+  vms-edge ctl <args...>
+  vms-edge update [edge-install-from-nas.sh args...]
+  vms-edge bootstrap [edge-install-from-nas.sh args...]
+
+Shortcuts:
+  start|up      Start the Docker stack without rebuilding images
+  stop|down     Stop the Docker stack
+  restart       Restart the Docker stack without rebuilding images
+  update        Pull the latest vms-edge-current from NAS and apply it
+  bootstrap     Run install/update auto mode from NAS
+EOF
+}
+
+cmd="${1:-help}"
+shift || true
+
+case "$cmd" in
+  start|up)
+    exec env VMS_SKIP_BUILD=true "$ROOT_DIR/scripts/linux/deploy-stack.sh" up "$@"
+    ;;
+  stop|down)
+    exec "$ROOT_DIR/scripts/linux/deploy-stack.sh" down "$@"
+    ;;
+  restart)
+    exec env VMS_SKIP_BUILD=true "$ROOT_DIR/scripts/linux/deploy-stack.sh" restart "$@"
+    ;;
+  status)
+    exec "$ROOT_DIR/scripts/linux/deploy-stack.sh" status "$@"
+    ;;
+  logs)
+    exec "$ROOT_DIR/scripts/linux/deploy-stack.sh" logs "$@"
+    ;;
+  ctl)
+    exec "$ROOT_DIR/scripts/linux/deploy-stack.sh" ctl "$@"
+    ;;
+  update)
+    exec "$ROOT_DIR/edge-install-from-nas.sh" update "$@"
+    ;;
+  bootstrap)
+    exec "$ROOT_DIR/edge-install-from-nas.sh" auto "$@"
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    echo "Unknown command: $cmd" >&2
+    usage >&2
+    exit 1
+    ;;
+esac

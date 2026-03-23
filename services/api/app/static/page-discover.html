@@ -1,0 +1,243 @@
+﻿<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Edge Console Control - DISCOVER</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/style.css?v=20260227-rotate1" />
+  </head>
+  <body>
+    <div class="bg-orb orb-a"></div>
+    <div class="bg-orb orb-b"></div>
+
+    <header>
+      <h1>Edge Console Control</h1>
+      <button id="refreshBtn" title="전체 상태를 즉시 새로고침합니다.">새로고침</button>
+    </header>
+
+    <div class="event-banner" id="eventBanner">
+      <div class="event-banner-head">
+        <strong>이벤트 상태</strong>
+        <span id="eventBadge" class="event-badge event-none">최근 이벤트 없음</span>
+      </div>
+      <div id="eventSummary" class="event-summary">최근 이벤트 요약이 여기에 표시됩니다.</div>
+    </div>
+
+    <nav class="quick-nav">
+      <a href="/static/page-live.html" title="실시간 영상과 WebRTC URL을 관리합니다.">라이브</a>
+      <a href="/static/page-monitor.html" title="카메라와 서버의 연결 상태를 확인합니다.">연결 상태</a>
+      <a href="/static/page-camera.html" title="카메라를 수동 등록/삭제합니다.">카메라</a>
+      <a href="/static/page-event.html" title="최근 이벤트와 아티팩트를 확인합니다.">이벤트</a>
+      <a href="/" title="메인 대시보드로 돌아갑니다.">메인</a>
+    </nav>
+
+    <main>
+      <section id="section-auth" class="panel panel-wide helpable" data-help="로그인 상태와 권한을 확인합니다.">
+        <h2>인증</h2>
+        <form id="authForm" class="grid">
+          <input id="authUsername" placeholder="아이디" value="admin" />
+          <input id="authPassword" placeholder="비밀번호" type="password" value="admin" />
+          <button type="submit">로그인</button>
+          <button type="button" id="logoutBtn">로그아웃</button>
+        </form>
+        <div id="authInfo" class="list"></div>
+      </section>
+
+      <section id="section-live" class="panel panel-wide helpable" data-help="실시간 영상 타일과 WebRTC URL을 확인합니다.">
+        <h2>라이브 보기 (최대 8채널)</h2>
+        <form id="liveConfigForm" class="grid">
+          <input id="webrtcBaseUrl" placeholder="http://127.0.0.1:8889" value="http://127.0.0.1:8889" />
+          <button type="submit">라이브 URL 적용</button>
+        </form>
+        <div id="liveGrid" class="live-grid"></div>
+      </section>
+
+      <section id="section-monitor" class="panel panel-wide helpable" data-help="카메라 연결/순환버퍼/재시작 상태를 모니터링합니다.">
+        <h2>연결 상태 모니터</h2>
+        <div id="monitorList" class="list"></div>
+      </section>
+
+      <section id="section-camera" class="panel helpable" data-help="카메라 RTSP와 WebRTC 경로를 등록/삭제합니다.">
+        <h2>카메라 등록</h2>
+        <form id="cameraForm" class="grid">
+          <input name="name" placeholder="카메라 이름" required />
+          <input name="rtspUrl" placeholder="rtsp://..." required />
+          <input name="webrtcPath" placeholder="webrtc 경로 (예: cam-01)" required />
+          <button type="submit">카메라 추가</button>
+        </form>
+        <div id="cameraList" class="list"></div>
+      </section>
+
+      <section id="section-discover" class="panel helpable" data-help="CIDR 및 ONVIF로 카메라를 자동 탐지합니다.">
+        <h2>카메라 자동 검색</h2>
+        <form id="discoverForm" class="grid">
+          <input id="discoverCidr" value="192.168.10.0/24" placeholder="CIDR (예: 192.168.10.0/24 또는 auto)" />
+          <input id="discoverPorts" value="554,8554" placeholder="포트 목록 (예: 554,8554)" />
+          <select id="discoverUseOnvif">
+            <option value="true">ONVIF 검색 사용</option>
+            <option value="false">ONVIF 검색 미사용</option>
+          </select>
+          <input id="discoverOnvifTimeoutMs" type="number" value="1500" min="300" max="10000" />
+          <input id="discoverUsername" placeholder="카메라 계정 (선택)" />
+          <input id="discoverPassword" placeholder="카메라 비밀번호 (선택)" type="password" />
+          <input id="discoverMaxHosts" type="number" value="256" min="1" max="2048" />
+          <input id="discoverTimeoutMs" type="number" value="500" min="100" max="5000" />
+          <button type="submit">검색 시작</button>
+        </form>
+        <div id="discoverInfo" class="list"></div>
+        <div id="discoverList" class="list"></div>
+      </section>
+
+      <section id="section-roi" class="panel helpable" data-help="ROI 영역을 추가/삭제/수정합니다.">
+        <h2>ROI 설정</h2>
+        <form id="roiForm" class="grid">
+          <select name="cameraId" id="roiCameraId" required></select>
+          <select name="enabled" id="roiEnabled">
+            <option value="true">사용</option>
+            <option value="false">미사용</option>
+          </select>
+          <div class="roi-toolbar">
+            <button type="button" id="roiAddBtn">영역 추가</button>
+            <button type="button" id="roiDeleteBtn">선택 영역 삭제</button>
+            <button type="button" id="roiClearBtn">전체 삭제</button>
+            <span id="roiSelectedLabel">선택: 없음</span>
+          </div>
+          <div class="roi-canvas-wrap">
+            <canvas id="roiCanvas" width="640" height="360"></canvas>
+          </div>
+          <textarea id="roiZones" rows="5" placeholder='[{"name":"zone-1","x":0.1,"y":0.1,"w":0.5,"h":0.4}]'></textarea>
+          <button type="submit">ROI 저장</button>
+        </form>
+        <div id="roiInfo" class="list"></div>
+      </section>
+
+      <section id="section-policy" class="panel helpable" data-help="이벤트 발생 시 클립/스냅샷 생성 정책을 설정합니다.">
+        <h2>이벤트 정책</h2>
+        <form id="policyForm" class="grid">
+          <select name="cameraId" id="policyCameraId" required></select>
+          <input name="eventType" value="motion" required />
+          <select name="mode" id="policyMode">
+            <option value="clip">클립</option>
+            <option value="snapshot">스냅샷</option>
+          </select>
+          <input name="preSec" type="number" value="10" min="0" />
+          <input name="postSec" type="number" value="20" min="1" />
+          <input name="snapshotCount" type="number" value="1" min="1" max="10" />
+          <button type="submit">정책 적용</button>
+        </form>
+        <div id="policyList" class="list"></div>
+      </section>
+
+      <section id="section-ai" class="panel helpable" data-help="AI 모델 파일과 timeout/poll/cooldown 값을 설정합니다.">
+        <h2>AI 모델 게이트</h2>
+        <form id="aiModelForm" class="grid">
+          <select name="enabled" id="aiEnabled">
+            <option value="true">사용</option>
+            <option value="false">미사용</option>
+          </select>
+          <select id="aiModelPreset">
+            <option value="">모델 경로 선택(자동 검색)</option>
+          </select>
+          <button type="button" id="aiModelListRefreshBtn">모델 목록 새로고침</button>
+          <button type="button" id="aiModelPresetApplyBtn">선택 경로 적용</button>
+          <input name="modelPath" id="aiModelPath" placeholder="C:\\models\\my_model.py" />
+          <input name="timeoutSec" id="aiTimeoutSec" type="number" value="5" min="1" />
+          <input name="pollSec" id="aiPollSec" type="number" value="2" min="0" step="0.1" />
+          <input name="cooldownSec" id="aiCooldownSec" type="number" value="10" min="0" />
+          <button type="submit">AI 설정 저장</button>
+        </form>
+        <div id="aiModelPresetInfo" class="list"></div>
+        <div id="aiModelInfo" class="list"></div>
+      </section>
+
+      <section id="section-ai-debug" class="panel panel-wide helpable" data-help="개발용 화면입니다. RTSP 프레임 위에 사람 바운딩 박스를 그려 모델 동작을 검증합니다.">
+        <h2>AI 디버그 (바운딩 박스 시각화)</h2>
+        <form id="aiDebugForm" class="grid">
+          <select id="aiDebugCameraId"></select>
+          <input id="aiDebugIntervalMs" type="number" min="150" step="50" value="700" placeholder="갱신 주기(ms)" />
+          <button type="submit">시작/적용</button>
+          <button type="button" id="aiDebugStopBtn">정지</button>
+          <button type="button" id="aiDebugSnapBtn">1회 추론</button>
+        </form>
+        <div id="aiDebugInfo" class="list"></div>
+        <div class="roi-canvas-wrap">
+          <canvas id="aiDebugCanvas" width="960" height="540"></canvas>
+        </div>
+      </section>
+
+      <section id="section-route" class="panel helpable" data-help="이벤트 산출물 전송 목적지와 라우팅 규칙을 구성합니다.">
+        <h2>전송 목적지/라우팅</h2>
+        <form id="destinationForm" class="grid">
+          <input name="name" placeholder="목적지 이름 (예: site-a-http)" required />
+          <select name="type">
+            <option value="https_post">HTTPS POST</option>
+            <option value="sftp">SFTP</option>
+          </select>
+          <input name="url" placeholder="https://receiver.example.com/upload" required />
+          <button type="submit">목적지 추가</button>
+        </form>
+        <form id="routeForm" class="grid">
+          <select name="cameraId" id="routeCameraId" required></select>
+          <input name="eventType" value="motion" required />
+          <select name="artifactKind">
+            <option value="both">둘다</option>
+            <option value="clip">클립</option>
+            <option value="snapshot">스냅샷</option>
+          </select>
+          <select name="destinationId" id="routeDestinationId" required></select>
+          <button type="submit">라우팅 추가</button>
+        </form>
+        <div id="destinationList" class="list"></div>
+        <div id="routeList" class="list"></div>
+      </section>
+
+      <section id="section-event" class="panel helpable" data-help="최근 이벤트와 아티팩트를 확인하고 수동 이벤트를 발생시킵니다.">
+        <h2>이벤트 로그</h2>
+        <div class="event-tools">
+          <button type="button" id="clearEventViewBtn">이벤트 화면 비우기</button>
+          <button type="button" id="resetEventViewBtn">전체 다시 보기</button>
+        </div>
+        <div id="eventViewInfo" class="list"></div>
+        <form id="personRuleForm" class="grid">
+          <select id="personRuleEnabled" name="enabled">
+            <option value="true">사람 감지 이벤트 사용</option>
+            <option value="false">사람 감지 이벤트 미사용</option>
+          </select>
+          <input id="personRuleDwellSec" name="dwellSec" type="number" min="1" value="5" placeholder="지속 감지(초)" />
+          <input id="personRuleCooldownSec" name="cooldownSec" type="number" min="0" value="10" placeholder="쿨타임(초)" />
+          <input id="personRuleEventType" name="eventType" value="person_detected" placeholder="eventType" />
+          <select id="personRuleSeverity" name="severity">
+            <option value="low">낮음</option>
+            <option value="medium">보통</option>
+            <option value="high" selected>높음</option>
+          </select>
+          <button type="submit">사람 이벤트 규칙 저장</button>
+        </form>
+        <div id="personRuleInfo" class="list"></div>
+        <form id="eventForm" class="grid">
+          <select name="cameraId" id="eventCameraId" required></select>
+          <input name="type" value="motion" required />
+          <select name="severity">
+            <option value="low">낮음</option>
+            <option value="medium" selected>보통</option>
+            <option value="high">높음</option>
+          </select>
+          <button type="submit">수동 이벤트 발생</button>
+        </form>
+        <div id="eventList" class="list"></div>
+        <div id="artifactList" class="list"></div>
+      </section>
+    </main>
+
+    <script>window.PAGE_SECTION = 'section-discover';</script>
+    <script src="/static/app.js?v=20260227-rotate2"></script>
+  </body>
+</html>
+
+

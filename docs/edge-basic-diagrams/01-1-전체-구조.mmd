@@ -1,0 +1,16 @@
+flowchart LR
+    A[카메라 RTSP/Video 입력] --> B[AI 모델 추론]
+    B --> C[Detections 생성<br/>person / head / helmet / vehicle]
+    C --> D[Recorder evaluate_event_pack]
+    D --> E1[person_cross_roi]
+    D --> E2[helmet_missing_in_roi]
+    D --> E3[vehicle_move_without_signalman]
+    D --> E4[no_parking_stop]
+    E1 --> F[events 테이블 적재]
+    E2 --> F
+    E3 --> F
+    E4 --> F
+    B --> G[모델 직접 events 반환]
+    G --> F
+    B --> H[단일 trigger fallback]
+    H --> F

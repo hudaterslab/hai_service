@@ -1,0 +1,14 @@
+flowchart TD
+    A[person detections] --> B{confidence >= minConfidence?}
+    B -- No --> X[제외]
+    B -- Yes --> C[바운딩박스 하단 띠 샘플링]
+    C --> D[ROI 포함 비율 계산<br/>bottom_entry_ratio]
+    D --> E{entryRatio 이상인가?}
+    E -- No --> X
+    E -- Yes --> F[inside 리스트에 추가]
+    F --> G[prev_inside 와 현재 inside 개수 비교]
+    G --> H{prev_inside == 0<br/>and now inside > 0?}
+    H -- No --> I[상태만 갱신]
+    H -- Yes --> J{cooldown 경과?}
+    J -- No --> I
+    J -- Yes --> K[person_cross_roi 이벤트 생성]

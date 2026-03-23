@@ -1,0 +1,23 @@
+flowchart TD
+    A[vehicle/person detections] --> B[ROI 필터]
+    B --> C{차량 존재?}
+    C -- Yes --> D[vehicle_seen_since 시작/유지]
+    D --> E{seen_for >= minVehicleSeenSec?}
+    E -- Yes --> F[vehicle_qualified = true]
+    E -- No --> G[대기]
+    C -- No --> H[vehicle_seen_since 초기화]
+    F --> I[prev_vehicle_inside 저장]
+    G --> I
+    H --> I
+    I --> J{직전엔 차량 있었고<br/>현재 차량 없음?}
+    J -- No --> K[exit_since 초기화]
+    J -- Yes --> L{현재 사람도 없는가?}
+    L -- No --> K
+    L -- Yes --> M{vehicle_qualified == true?}
+    M -- No --> K
+    M -- Yes --> N[exit_since 시작/유지]
+    N --> O{exited_for >= exitHoldSec?}
+    O -- No --> P[대기]
+    O -- Yes --> Q{cooldown 경과?}
+    Q -- No --> P
+    Q -- Yes --> R[unauthorized_departure 이벤트 생성]

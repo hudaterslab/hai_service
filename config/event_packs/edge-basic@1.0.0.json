@@ -1,0 +1,64 @@
+{
+  "packId": "edge-basic",
+  "version": "1.0.0",
+  "name": "Edge Basic Safety Pack",
+  "description": "Low-spec edge default event pack for person/helmet/vehicle safety rules.",
+  "events": [
+    {
+      "key": "person_cross_roi",
+      "eventType": "person_cross_roi",
+      "severity": "medium",
+      "enabled": true,
+      "params": {
+        "roiName": "zone-1",
+        "minConfidence": 0.35,
+        "entryRatio": 0.9,
+        "cooldownSec": 10
+      }
+    },
+    {
+      "key": "helmet_missing_in_roi",
+      "eventType": "helmet_missing_in_roi",
+      "severity": "high",
+      "enabled": true,
+      "params": {
+        "roiName": "zone-1",
+        "minConfidencePerson": 0.35,
+        "minConfidenceHead": 0.35,
+        "minConfidenceHelmet": 0.35,
+        "holdSec": 3,
+        "cooldownSec": 20
+      }
+    },
+    {
+      "key": "vehicle_move_without_signalman",
+      "eventType": "unauthorized_departure",
+      "severity": "high",
+      "enabled": true,
+      "params": {
+        "vehicleRoiName": "zone-1",
+        "personRoiName": "zone-1",
+        "minConfidenceVehicle": 0.45,
+        "minVehicleSeenSec": 2.0,
+        "exitHoldSec": 1.5,
+        "cooldownSec": 30
+      }
+    },
+    {
+      "key": "no_parking_stop",
+      "eventType": "no_parking_stop",
+      "severity": "medium",
+      "enabled": true,
+      "params": {
+        "roiName": "zone-1",
+        "minConfidenceVehicle": 0.35,
+        "minRoiOverlap": 0.7,
+        "stopMotionThreshold": 0.01,
+        "dwellSec": 300,
+        "missGraceSec": 5,
+        "trackMaxCenterDist": 0.12,
+        "cooldownSec": 30
+      }
+    }
+  ]
+}

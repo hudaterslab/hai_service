@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VMS Web UI 운영 매뉴얼</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+    }
+    :root {
+      --ink: #172033;
+      --muted: #5e6c84;
+      --line: #d7dee8;
+      --accent: #0f6f9d;
+      --soft: #f5f8fb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+      color: var(--ink);
+      background: white;
+      line-height: 1.62;
+      font-size: 11pt;
+    }
+    .page {
+      width: 100%;
+      max-width: 180mm;
+      margin: 0 auto;
+    }
+    .cover {
+      padding: 6mm 0 8mm;
+      border-bottom: 2px solid var(--ink);
+      margin-bottom: 8mm;
+    }
+    .eyebrow {
+      display: inline-block;
+      font-size: 9.5pt;
+      color: var(--accent);
+      border: 1px solid #b9d9e8;
+      background: #eef8fd;
+      border-radius: 999px;
+      padding: 2mm 4mm;
+      margin-bottom: 5mm;
+    }
+    h1 {
+      margin: 0 0 4mm;
+      font-size: 24pt;
+      line-height: 1.2;
+    }
+    .meta {
+      color: var(--muted);
+      font-size: 10pt;
+      margin-bottom: 5mm;
+    }
+    .lead {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 3mm;
+      padding: 4mm 5mm;
+      font-size: 10.5pt;
+    }
+    .toc {
+      margin: 8mm 0 10mm;
+      padding: 0;
+      list-style: none;
+      columns: 2;
+      column-gap: 10mm;
+    }
+    .toc li {
+      margin: 0 0 2.5mm;
+      font-size: 10pt;
+    }
+    .section {
+      margin: 0 0 9mm;
+      page-break-inside: avoid;
+    }
+    h2 {
+      font-size: 16pt;
+      margin: 0 0 3mm;
+      padding-bottom: 2mm;
+      border-bottom: 1px solid var(--line);
+    }
+    h3 {
+      font-size: 12.5pt;
+      margin: 6mm 0 2.5mm;
+    }
+    p {
+      margin: 0 0 3mm;
+    }
+    ul, ol {
+      margin: 2mm 0 4mm 5mm;
+      padding-left: 5mm;
+    }
+    li {
+      margin: 0 0 1.6mm;
+    }
+    .kv {
+      display: table;
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 3mm;
+      margin: 3mm 0 4mm;
+    }
+    .kv-row {
+      display: table-row;
+    }
+    .kv-label, .kv-value {
+      display: table-cell;
+      padding: 3mm 4mm;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      vertical-align: top;
+    }
+    .kv-label {
+      width: 34%;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    figure {
+      margin: 4mm 0 4mm;
+      page-break-inside: avoid;
+    }
+    figure img {
+      display: block;
+      width: 100%;
+      border: 1px solid var(--line);
+    }
+    figcaption {
+      margin-top: 2mm;
+      color: var(--muted);
+      font-size: 9.5pt;
+    }
+    .tip {
+      border-left: 3px solid var(--accent);
+      background: var(--soft);
+      padding: 3mm 4mm;
+      margin: 4mm 0;
+    }
+    .code {
+      white-space: pre-wrap;
+      font-family: "DejaVu Sans Mono", monospace;
+      font-size: 9.5pt;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      padding: 4mm;
+    }
+    .footer-note {
+      margin-top: 8mm;
+      color: var(--muted);
+      font-size: 9.5pt;
+      border-top: 1px solid var(--line);
+      padding-top: 3mm;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="cover">
+      <div class="eyebrow">Print PDF Edition</div>
+      <h1>VMS Web UI 운영 매뉴얼</h1>
+      <div class="meta">작성일: 2026-03-10 | 대상 시스템: <strong>vms-8ch-webrtc</strong></div>
+      <div class="lead">
+        이 문서는 VMS WebUI의 실제 화면 구조와 버튼명을 기준으로 정리한 인쇄용 배포본입니다.
+        아래 이미지는 런타임 실캡처가 아니라 실제 WebUI 소스 기준으로 만든 화면 예시이며, 운영 절차를 빠르게 따라가기 위한 안내용으로 사용합니다.
+      </div>
+      <ul class="toc">
+        <li>1. 문서 목적</li>
+        <li>2. 먼저 알아둘 것</li>
+        <li>3. 운영자가 보는 첫 화면</li>
+        <li>4. 자주 쓰는 화면별 설명</li>
+        <li>5. 실제 운영 흐름</li>
+        <li>6. 화면과 파일의 대응</li>
+        <li>7. 빠른 점검 명령</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>1. 문서 목적</h2>
+      <p>이 문서는 <code>services/api/app/static/</code>의 실제 Web UI 소스와 버튼명, 입력 필드, 운영 흐름을 기준으로 다시 정리한 운영 매뉴얼입니다.</p>
+      <ul>
+        <li>배포용 PDF 기준으로 재정리한 단일 컬럼 문서입니다.</li>
+        <li>운영자가 화면 위치를 빠르게 찾고 작업 순서를 바로 따라갈 수 있게 구성했습니다.</li>
+        <li>화면 예시는 실제 HTML/CSS 구조와 필드명을 반영한 소스 기반 이미지입니다.</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>2. 먼저 알아둘 것</h2>
+      <div class="kv">
+        <div class="kv-row">
+          <div class="kv-label">기본 접속 주소</div>
+          <div class="kv-value">http://127.0.0.1:8080/</div>
+        </div>
+        <div class="kv-row">
+          <div class="kv-label">WebRTC 기본 주소</div>
+          <div class="kv-value">http://127.0.0.1:8889</div>
+        </div>
+      </div>
+      <ol>
+        <li><code>deploy/docker-compose.yml</code> 기준 컨테이너가 모두 올라왔는지 확인합니다.</li>
+        <li><code>/healthz</code>가 <code>{"ok":true}</code>를 반환하는지 확인합니다.</li>
+        <li>라이브 화면이 비어 있으면 MediaMTX와 RTSP 연결 상태를 먼저 확인합니다.</li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2>3. 운영자가 보는 첫 화면</h2>
+      <figure>
+        <img src="webui-screenshots/dashboard-overview.png" alt="메인 대시보드 예시" />
+        <figcaption>메인 대시보드 예시. 이벤트 로그, 상단 버튼, 메인 탭, 스냅샷 주기, 카메라 상태 카드를 먼저 봅니다.</figcaption>
+      </figure>
+      <ol>
+        <li>카메라 상태 카드에서 online/offline을 먼저 봅니다.</li>
+        <li>이벤트 로그가 최근 시각으로 갱신되는지 확인합니다.</li>
+        <li>필요 시 <code>새로고침</code>으로 상태를 즉시 재조회합니다.</li>
+        <li>설정을 바꿔야 하면 <code>설정</code> 탭으로 이동합니다.</li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2>4. 자주 쓰는 화면별 설명</h2>
+
+      <h3>4.1 카메라 등록</h3>
+      <figure>
+        <img src="webui-screenshots/camera-register.png" alt="카메라 등록 예시" />
+        <figcaption>수동 등록 폼, RTSP URL, WebRTC path, 등록 목록, 회전 버튼 위치를 보여주는 예시입니다.</figcaption>
+      </figure>
+      <ol>
+        <li><code>카메라 이름</code> 입력</li>
+        <li>실제 연결 가능한 <code>rtsp://...</code> 입력</li>
+        <li>카메라별로 고유한 <code>WebRTC path</code> 입력</li>
+        <li><code>카메라 추가</code> 실행</li>
+        <li>오른쪽 목록에서 등록 결과 확인</li>
+      </ol>
+      <div class="tip">RTSP URL이 틀리면 라이브, 스냅샷, 이벤트 처리 모두 연쇄적으로 실패합니다.</div>
+
+      <h3>4.2 카메라 자동 검색</h3>
+      <figure>
+        <img src="webui-screenshots/discover-flow.png" alt="카메라 자동 검색 예시" />
+        <figcaption>대역, 포트, 인증정보를 넣고 검색한 뒤 개별 등록 또는 전체 등록으로 넘기는 흐름입니다.</figcaption>
+      </figure>
+      <ol>
+        <li><code>CIDR</code>은 처음엔 작은 범위로 시작합니다.</li>
+        <li><code>RTSP 포트 목록</code>은 보통 <code>554</code> 또는 <code>554,8554</code>부터 시작합니다.</li>
+        <li>인증이 필요한 장비면 계정과 비밀번호를 같이 넣습니다.</li>
+        <li><code>검색 시작</code> 후 결과를 보고, 대량 등록 전 한 대만 먼저 검증합니다.</li>
+      </ol>
+
+      <h3>4.3 라이브 보기</h3>
+      <figure>
+        <img src="webui-screenshots/live-view.png" alt="라이브 보기 예시" />
+        <figcaption>WebRTC base URL 저장과 카메라별 영상 타일 위치를 보여주는 예시입니다.</figcaption>
+      </figure>
+      <ol>
+        <li><code>WebRTC base URL</code>이 실제 MediaMTX 주소와 맞는지 확인합니다.</li>
+        <li><code>라이브 URL 적용</code>으로 브라우저 기준 주소를 저장합니다.</li>
+        <li>각 타일이 실제 영상으로 바뀌는지 확인합니다.</li>
+      </ol>
+
+      <h3>4.4 ROI 설정</h3>
+      <figure>
+        <img src="webui-screenshots/roi-editor.png" alt="ROI 설정 예시" />
+        <figcaption>스냅샷 배경 위에 영역을 그리고 JSON을 함께 확인하는 ROI 편집 예시입니다.</figcaption>
+      </figure>
+      <ol>
+        <li>대상 카메라 선택</li>
+        <li><code>스냅샷 캡처</code>로 배경 확보</li>
+        <li><code>사각형 그리기</code> 또는 <code>다각형 그리기</code> 선택</li>
+        <li>실제 감지하고 싶은 구역만 표시</li>
+        <li>필요 시 JSON 확인</li>
+        <li><code>ROI 저장</code>으로 반영</li>
+      </ol>
+      <div class="tip">ROI 변경 후에는 수동 이벤트나 AI preview로 반드시 한 번 검증하는 편이 안전합니다.</div>
+
+      <h3>4.5 이벤트 확인과 외부 전송</h3>
+      <figure>
+        <img src="webui-screenshots/event-route.png" alt="이벤트와 라우팅 예시" />
+        <figcaption>왼쪽은 이벤트 확인, 오른쪽은 목적지와 라우팅 설정 예시입니다.</figcaption>
+      </figure>
+      <p>이벤트 화면에서는 수동 이벤트 발생, 최근 이벤트 확인, 현재 시점 이후 이벤트만 보기 작업을 합니다.</p>
+      <p>라우팅 화면에서는 목적지 생성, 카메라와 목적지 연결, snapshot 전송 대상을 구성합니다.</p>
+      <div class="tip">이벤트가 생성돼도 라우팅이 없으면 외부 전송은 발생하지 않습니다.</div>
+    </section>
+
+    <section class="section">
+      <h2>5. 실제 운영 흐름</h2>
+      <h3>5.1 새 카메라 1대 추가</h3>
+      <ol>
+        <li><code>카메라 등록</code> 또는 <code>카메라 자동 검색</code>으로 카메라를 넣습니다.</li>
+        <li><code>라이브 보기</code>에서 영상이 열리는지 확인합니다.</li>
+        <li><code>ROI 설정</code>에서 감지 구역을 잡습니다.</li>
+        <li><code>이벤트 정책</code>에서 <code>clip</code> 또는 <code>snapshot</code> 모드를 정합니다.</li>
+        <li>필요하면 <code>AI 모델</code>과 <code>이벤트 팩</code>을 붙입니다.</li>
+        <li><code>수동 이벤트 발생</code> 또는 AI preview로 동작을 확인합니다.</li>
+        <li>외부 전송이 필요하면 목적지와 라우팅을 연결합니다.</li>
+      </ol>
+
+      <h3>5.2 이벤트가 안 생길 때</h3>
+      <ol>
+        <li>카메라 상태가 <code>online</code>인지 확인합니다.</li>
+        <li>라이브 화면에서 영상이 실제로 나오는지 확인합니다.</li>
+        <li>AI 사용 카메라라면 모델 경로와 enable 상태를 확인합니다.</li>
+        <li>ROI가 필요한 영역을 과하게 막고 있지 않은지 봅니다.</li>
+        <li>이벤트 정책과 이벤트 팩이 활성화돼 있는지 확인합니다.</li>
+        <li><code>AI Debug</code> 또는 수동 이벤트로 기본 동작부터 쪼개서 확인합니다.</li>
+      </ol>
+
+      <h3>5.3 스냅샷은 생기는데 전송이 안 될 때</h3>
+      <ol>
+        <li>목적지 URL 확인</li>
+        <li><code>terminalId</code>, <code>cctvId</code>, 카메라별 매핑 확인</li>
+        <li>bearer token 환경변수명 확인</li>
+        <li>라우팅 연결 여부 확인</li>
+        <li><code>delivery-worker</code> 로그 확인</li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2>6. 화면과 파일의 대응</h2>
+      <ul>
+        <li><code>index.html</code>: 통합 메인 화면</li>
+        <li><code>page-camera.html</code>: 카메라 등록/관리</li>
+        <li><code>page-discover.html</code>: 자동 검색</li>
+        <li><code>page-live.html</code>: 라이브</li>
+        <li><code>page-roi.html</code>: ROI 편집</li>
+        <li><code>page-policy.html</code>: 이벤트 정책</li>
+        <li><code>page-route.html</code>: 목적지와 라우팅</li>
+        <li><code>page-ai.html</code>: AI와 모델 설정</li>
+        <li><code>page-ai-debug.html</code>: 개발/점검용 AI 미리보기</li>
+        <li><code>page-event.html</code>: 이벤트 확인과 수동 이벤트 생성</li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>7. 빠른 점검 명령</h2>
+      <div class="code">cd /media/fishduke/06800C3B800C3429/WorkWithCodex/vms-8ch-webrtc
+docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps
+curl http://127.0.0.1:8080/healthz
+docker logs vms-api --tail 200
+docker logs vms-event-recorder --tail 200
+docker logs vms-delivery-worker --tail 200
+docker logs vms-mediamtx --tail 200</div>
+    </section>
+
+    <div class="footer-note">
+      이 PDF는 배포용 인쇄 레이아웃 기준으로 재구성한 버전입니다.
+    </div>
+  </div>
+</body>
+</html>

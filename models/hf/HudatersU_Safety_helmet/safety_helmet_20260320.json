@@ -1,0 +1,15 @@
+{
+  "classNames": [
+    "person",
+    "person_lower_body",
+    "helmet",
+    "person_head",
+    "reflective_vest",
+    "work_vehicle_front",
+    "general_vehicle"
+  ],
+  "inputWidth": 960,
+  "inputHeight": 960,
+  "source": "model_export_2026_03_20_best/best.dxnn",
+  "notes": "Compiled successfully from the 2026-03-20 export. person_head is handled by dxnn_helmet_runner."
+}

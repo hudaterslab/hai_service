@@ -1,0 +1,73 @@
+﻿<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Network Settings</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/style.css?v=20260303-settings-redesign2" />
+  </head>
+  <body class="subpage">
+    <div class="bg-mesh"></div>
+
+    <header class="topbar">
+      <div class="topbar-title">
+        <h1>Network Settings</h1>
+        <p>이벤트/이미지 전송 목적지와 라우팅을 설정합니다.</p>
+      </div>
+      <div class="topbar-actions">
+        <a class="back-link" href="/">대시보드로</a>
+        <button id="networkRefreshBtn" type="button">새로고침</button>
+      </div>
+    </header>
+
+    <main class="workspace subpage-workspace">
+      <section class="panel panel-wide settings-card">
+        <div class="section-head">
+          <h2>목적지 추가</h2>
+          <p>CCTV 이벤트 이미지 수집 API(cctv_img_v1) 목적지를 등록합니다.</p>
+        </div>
+        <form id="destinationForm2" class="grid">
+          <input id="destEditId2" type="hidden" />
+          <input id="destName2" name="name" placeholder="목적지 이름" required />
+          <input id="destUrl2" name="url" placeholder="https://tmlsafety.hudaters.net/receiver/api/v1/cctv/img" required />
+          <input id="destTerminalId2" name="terminalId" placeholder="terminalId (예: 99999)" required />
+          <input id="destCctvId2" name="cctvId" type="number" min="1" placeholder="기본 cctvId (선택)" />
+          <textarea
+            id="destCctvMap2"
+            name="cctvIdByCameraId"
+            rows="4"
+            placeholder='카메라별 cctvId JSON (선택)&#10;{"camera_uuid": 101}'
+          ></textarea>
+          <input id="destAuthTokenEnv2" name="authTokenEnv" placeholder="Bearer token env (선택, 예: DEST_HTTP_BEARER_TOKEN)" />
+          <button type="submit">목적지 저장</button>
+          <button id="destEditCancelBtn2" type="button" style="display:none">편집 취소</button>
+        </form>
+        <div id="destinationInfo2" class="list"></div>
+        <div id="destinationList2" class="list"></div>
+      </section>
+
+      <section class="panel panel-wide settings-card">
+        <div class="section-head">
+          <h2>라우팅 추가</h2>
+          <p>카메라별 스냅샷을 목적지로 보냅니다. 이벤트 타입은 전체(*)로 자동 적용됩니다.</p>
+        </div>
+        <form id="routeForm2" class="grid">
+          <select id="routeCameraId2" name="cameraId" required></select>
+          <input id="routeArtifactKind2" name="artifactKind" value="snapshot" readonly />
+          <select id="routeDestinationId2" name="destinationId" required></select>
+          <button type="submit">라우팅 저장</button>
+        </form>
+        <div id="routeInfo2" class="list"></div>
+        <div id="routeList2" class="list"></div>
+      </section>
+    </main>
+
+    <script src="/static/network-settings.js?v=20260305-network-settings6"></script>
+  </body>
+</html>

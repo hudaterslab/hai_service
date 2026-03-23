@@ -1,0 +1,17 @@
+logLevel: info
+
+rtsp: yes
+rtspAddress: :8554
+
+webrtc: yes
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+
+# In production, set public host and TURN if NAT traversal is needed.
+webrtcAdditionalHosts: []
+
+paths:
+  cam-192-168-10-78:
+    source: publisher
+  all:
+    source: publisher

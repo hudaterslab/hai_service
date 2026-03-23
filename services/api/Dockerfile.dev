@@ -1,0 +1,25 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    libgl1 \
+    libglib2.0-0 \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY services/requirements.dev.txt /tmp/requirements.dev.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.dev.txt
+
+COPY services/api /app/services/api
+COPY models /app/models
+COPY yolov8n.pt /app/yolov8n.pt
+
+RUN mkdir -p /app/data
+
+EXPOSE 8080
+
+CMD ["python", "/app/services/api/dev_server.py"]

@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  vms-api-dev:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile.dev
+    container_name: vms-api-dev
+    environment:
+      DEV_DB_PATH: /app/data/dev.db
+      YOLO_MODEL_PATH: /app/yolov8n.pt
+      YOLO_DEVICE: cpu
+      PERSON_EXIT_STATE_DIR: /app/models/.runtime/person_exit_state
+    volumes:
+      - ../data:/app/data
+      - ../models:/app/models
+      - ../services/api:/app/services/api
+      - ../yolov8n.pt:/app/yolov8n.pt:ro
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  vms-worker-dev:
+    build:
+      context: ..
+      dockerfile: services/recorder/Dockerfile.dev
+    container_name: vms-worker-dev
+    depends_on:
+      - vms-api-dev
+    environment:
+      DEV_DB_PATH: /app/data/dev.db
+      DEV_API_BASE_URL: http://vms-api-dev:8080
+      MODEL_PYTHON_BIN: python
+      DEV_RECORDER_POLL_SEC: 2.0
+      DEV_RECORDER_CONNECT_TIMEOUT_SEC: 2.5
+      DEV_RECORDER_MAX_BACKOFF_SEC: 60
+      DEV_AI_RTSP_FALLBACK_PATH: /Streaming/Channels/101
+      YOLO_MODEL_PATH: /app/yolov8n.pt
+      YOLO_DEVICE: cpu
+      PERSON_EXIT_STATE_DIR: /app/models/.runtime/person_exit_state
+      PERSON_EXIT_ABSENCE_SEC: 3.0
+      PERSON_EXIT_CONF_THRES: 0.25
+      PERSON_EXIT_FRAME_TIMEOUT_SEC: 4.0
+      PERSON_EXIT_FRAME_MAX_TRIES: 20
+    volumes:
+      - ../data:/app/data
+      - ../models:/app/models
+      - ../services/recorder:/app/services/recorder
+      - ../yolov8n.pt:/app/yolov8n.pt:ro
+    restart: unless-stopped

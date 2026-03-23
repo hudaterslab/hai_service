@@ -1,0 +1,10 @@
+deploy/.env
+runtime/
+output/
+dist/
+tmp/
+.git/
+.playwright-cli/
+models/.runtime/
+docker-images/
+INSTALLER_MANIFEST.txt

@@ -1,0 +1,26 @@
+flowchart TD
+    A[vehicle detections] --> B{confidence >= minConfidenceVehicle?}
+    B -- No --> X[제외]
+    B -- Yes --> C[ROI 중첩률 계산]
+    C --> D{overlap >= minRoiOverlap?}
+    D -- No --> X
+    D -- Yes --> E[candidate 등록]
+    E --> F[이전 tracked_center 와 가장 가까운 차량 선택]
+    F --> G{거리 > trackMaxCenterDist?}
+    G -- Yes --> H[다른 차량으로 판단<br/>stationary_since 초기화]
+    G -- No --> I[동일 차량 추적 유지]
+    H --> J[중심점 갱신]
+    I --> J
+    J --> K{prev_center 대비 이동거리 >= stopMotionThreshold?}
+    K -- Yes --> L[moving=true<br/>stationary_since 초기화]
+    K -- No --> M[moving=false]
+    M --> N[stationary_since 시작/유지]
+    N --> O{parked_for >= dwellSec?}
+    O -- No --> P[대기]
+    O -- Yes --> Q{cooldown 경과?}
+    Q -- No --> P
+    Q -- Yes --> R[no_parking_stop 이벤트 생성]
+    E --> S{이번 프레임 후보 없음?}
+    S -- Yes --> T{마지막 검출 후 missGraceSec 이내?}
+    T -- Yes --> U[짧은 occlusion 허용<br/>정지 상태 유지]
+    T -- No --> V[추적 상태 전체 초기화]

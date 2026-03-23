@@ -1,0 +1,221 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: vms-postgres
+    environment:
+      POSTGRES_USER: vms
+      POSTGRES_PASSWORD: vms
+      POSTGRES_DB: vms
+    volumes:
+      - ../db/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+      - vms_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vms -d vms"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    container_name: vms-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ${VMS_DATA_ROOT:-../runtime}/redis:/data
+    restart: unless-stopped
+
+  mediamtx:
+    image: bluenviron/mediamtx:1.11.3
+    container_name: vms-mediamtx
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml:ro
+    ports:
+      - "8554:8554"   # RTSP ingest
+      - "8889:8889"   # WebRTC HTTP
+      - "8189:8189/udp" # WebRTC ICE/UDP
+    restart: unless-stopped
+
+  dxnn-host-infer:
+    build:
+      context: ..
+      dockerfile: services/dxnn-host/Dockerfile
+    container_name: vms-dxnn-host-infer
+    environment:
+      DXRT_AUTO_PIP_INSTALL: "true"
+      DXRT_PY_PACKAGE_PATH: /opt/dxrt/python_package
+      DXRT_HOST_LIB_PATH: /opt/dxrt_host_lib
+      LD_LIBRARY_PATH: /opt/dxrt_host_lib:/usr/local/lib:/usr/lib:/lib
+      HOST_DXNN_BIND: 0.0.0.0
+      HOST_DXNN_PORT: "18081"
+      HOST_MODEL_MAP_FROM: /opt/vms/models
+      HOST_MODEL_MAP_TO: /opt/vms/models
+      DXNN_CLASS_NAMES: helmet,head,person
+      DXNN_USE_ORT: "true"
+    volumes:
+      - ../models:/opt/vms/models
+      - ${DXRT_HOST_DIR:-/opt/deepx/dx_rt}:/opt/dxrt:ro
+      - ${DXRT_HOST_LIB_DIR:-/usr/local/lib}:/opt/dxrt_host_lib:ro
+      - /dev:/dev
+      - /dev/shm:/dev/shm
+      - /dev/mqueue:/dev/mqueue
+    ipc: host
+    # DXRT IPC uses host-visible client process identity; host PID namespace keeps
+    # the containerized dx_engine client compatible with the host dxrtd service.
+    pid: host
+    privileged: true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:18081/healthz || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "${DXNN_HOST_PORT:-18081}:18081"
+    restart: unless-stopped
+
+  vms-api:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+    container_name: vms-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      mediamtx:
+        condition: service_started
+      dxnn-host-infer:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://vms:vms@postgres:5432/vms?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_MTX_HTTP_URL: http://mediamtx:8889
+      VMS_CONFIG_PATH: /etc/vms/vms.yaml
+      AUTH_ENABLED: "false"
+      JWT_SECRET: change-me
+      AUTH_USERS_JSON: '[{"username":"admin","password":"admin","role":"admin"},{"username":"operator","password":"operator","role":"operator"}]'
+      DXRT_AUTO_PIP_INSTALL: "true"
+      DXRT_PY_PACKAGE_PATH: /opt/dxrt/python_package
+      DXRT_HOST_LIB_PATH: /opt/dxrt_host_lib
+      LD_LIBRARY_PATH: /opt/dxrt_host_lib:/usr/local/lib:/usr/lib:/lib
+      DXNN_USE_ORT: "true"
+      DXNN_HOST_INFER_URL: http://dxnn-host-infer:18081/infer
+      DXNN_HOST_REQUIRED: "true"
+      DXNN_HOST_TIMEOUT_SEC: "15"
+    volumes:
+      - ../config/vms.example.yaml:/etc/vms/vms.yaml:ro
+      - ${VMS_DATA_ROOT:-../runtime}/media:/var/lib/vms
+      - ../models:/opt/vms/models
+      - ${DXRT_HOST_DIR:-/opt/deepx/dx_rt}:/opt/dxrt:ro
+      - ${DXRT_HOST_LIB_DIR:-/usr/local/lib}:/opt/dxrt_host_lib:ro
+      - /dev:/dev
+      - /dev/shm:/dev/shm
+      - /dev/mqueue:/dev/mqueue
+    ipc: host
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  vms-ops:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+    depends_on:
+      vms-api:
+        condition: service_healthy
+    environment:
+      VMS_API_BASE_URL: http://vms-api:8080
+      AUTH_ENABLED: "false"
+    volumes:
+      - ../config/vms.example.yaml:/etc/vms/vms.yaml:ro
+      - ${VMS_DATA_ROOT:-../runtime}/media:/var/lib/vms
+      - ../models:/opt/vms/models
+      - ${DXRT_HOST_DIR:-/opt/deepx/dx_rt}:/opt/dxrt:ro
+      - ${DXRT_HOST_LIB_DIR:-/usr/local/lib}:/opt/dxrt_host_lib:ro
+    entrypoint: ["vmsctl"]
+    command: ["--help"]
+    profiles: ["ops"]
+
+  event-recorder:
+    build:
+      context: ..
+      dockerfile: services/recorder/Dockerfile
+    container_name: vms-event-recorder
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      mediamtx:
+        condition: service_started
+      dxnn-host-infer:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://vms:vms@postgres:5432/vms?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_MTX_RTSP_URL: rtsp://mediamtx:8554
+      VMS_CONFIG_PATH: /etc/vms/vms.yaml
+      MEDIA_ROOT: /var/lib/vms
+      MODEL_PYTHON_BIN: python
+      CAMERA_CONNECT_TIMEOUT_SEC: 2.5
+      CAMERA_RECONNECT_MAX_BACKOFF_SEC: 60
+      USE_FFMPEG_ARTIFACTS: "true"
+      FFMPEG_BIN: ffmpeg
+      ENABLE_RTSP_RING_BUFFER: "false"
+      RING_SEGMENT_SEC: 1
+      RING_BUFFER_SECONDS: 120
+      LOW_DISK_FREE_RATIO: "0.10"
+      LOG_PRUNE_BATCH_SIZE: 5000
+      LOG_PRUNE_MAX_BATCHES: 20
+      DELIVERY_DEDUP_WINDOW_SEC: "${DELIVERY_DEDUP_WINDOW_SEC:-10}"
+      DXRT_AUTO_PIP_INSTALL: "true"
+      DXRT_PY_PACKAGE_PATH: /opt/dxrt/python_package
+      DXRT_HOST_LIB_PATH: /opt/dxrt_host_lib
+      LD_LIBRARY_PATH: /opt/dxrt_host_lib:/usr/local/lib:/usr/lib:/lib
+      DXNN_USE_ORT: "true"
+      DXNN_HOST_INFER_URL: http://dxnn-host-infer:18081/infer
+      DXNN_HOST_REQUIRED: "true"
+      DXNN_HOST_TIMEOUT_SEC: "15"
+    volumes:
+      - ../config/vms.example.yaml:/etc/vms/vms.yaml:ro
+      - ${VMS_DATA_ROOT:-../runtime}/media:/var/lib/vms
+      - ../models:/opt/vms/models
+      - ${DXRT_HOST_DIR:-/opt/deepx/dx_rt}:/opt/dxrt:ro
+      - ${DXRT_HOST_LIB_DIR:-/usr/local/lib}:/opt/dxrt_host_lib:ro
+      - /dev:/dev
+      - /dev/shm:/dev/shm
+      - /dev/mqueue:/dev/mqueue
+    ipc: host
+    restart: unless-stopped
+
+  delivery-worker:
+    build:
+      context: ..
+      dockerfile: services/delivery/Dockerfile
+    container_name: vms-delivery-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://vms:vms@postgres:5432/vms?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      DEST_HTTP_BEARER_TOKEN: change-me
+      EDGE_DEVICE_NAME_FILE: /etc/host_hostname
+      DELETE_LOCAL_ARTIFACT_ON_SUCCESS: "true"
+      DELETE_LOCAL_SNAPSHOT_ON_SUCCESS: "true"
+      VMS_CONFIG_PATH: /etc/vms/vms.yaml
+    volumes:
+      - ../config/vms.example.yaml:/etc/vms/vms.yaml:ro
+      - ${VMS_DATA_ROOT:-../runtime}/media:/var/lib/vms
+      - /etc/hostname:/etc/host_hostname:ro
+    restart: unless-stopped
+
+volumes:
+  vms_pg_data:

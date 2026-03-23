@@ -1,0 +1,1048 @@
+openapi: 3.0.3
+info:
+  title: VMS API
+  version: 0.1.0
+  description: |
+    API draft for 8-channel WebRTC VMS.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: Auth
+  - name: Cameras
+  - name: EventPolicies
+  - name: Destinations
+  - name: RoutingRules
+  - name: Events
+  - name: Artifacts
+  - name: Settings
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and issue JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user info
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+  /auth/hash-password:
+    post:
+      tags: [Auth]
+      summary: Generate PBKDF2 password hash (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HashPasswordRequest'
+      responses:
+        '200':
+          description: Hashed password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HashPasswordResponse'
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /cameras:
+    get:
+      tags: [Cameras]
+      summary: List cameras
+      responses:
+        '200':
+          description: Camera list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Camera'
+    post:
+      tags: [Cameras]
+      summary: Create camera
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCameraRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Camera'
+  /cameras/discover:
+    post:
+      tags: [Cameras]
+      summary: Discover RTSP cameras in local network
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiscoverCamerasRequest'
+      responses:
+        '200':
+          description: Discovery result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscoverCamerasResponse'
+  /cameras/{cameraId}:
+    patch:
+      tags: [Cameras]
+      summary: Update camera
+      parameters:
+        - $ref: '#/components/parameters/CameraId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCameraRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Camera'
+    delete:
+      tags: [Cameras]
+      summary: Delete camera
+      parameters:
+        - $ref: '#/components/parameters/CameraId'
+      responses:
+        '204':
+          description: Deleted
+  /cameras/{cameraId}/event-policy:
+    patch:
+      tags: [EventPolicies]
+      summary: Set event policy for a camera
+      parameters:
+        - $ref: '#/components/parameters/CameraId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertEventPolicyRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventPolicy'
+  /cameras/{cameraId}/roi:
+    get:
+      tags: [Cameras]
+      summary: Get camera ROI settings
+      parameters:
+        - $ref: '#/components/parameters/CameraId'
+      responses:
+        '200':
+          description: ROI settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CameraROI'
+    put:
+      tags: [Cameras]
+      summary: Upsert camera ROI settings
+      parameters:
+        - $ref: '#/components/parameters/CameraId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CameraROI'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CameraROI'
+  /event-policies:
+    get:
+      tags: [EventPolicies]
+      summary: List all event policies
+      responses:
+        '200':
+          description: Event policy list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventPolicy'
+  /settings/ai-model:
+    get:
+      tags: [Settings]
+      summary: Get AI model execution settings
+      responses:
+        '200':
+          description: AI model settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIModelSettings'
+    put:
+      tags: [Settings]
+      summary: Update AI model execution settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AIModelSettings'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AIModelSettings'
+  /destinations:
+    get:
+      tags: [Destinations]
+      summary: List destinations
+      responses:
+        '200':
+          description: Destination list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Destination'
+    post:
+      tags: [Destinations]
+      summary: Create destination
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDestinationRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Destination'
+  /destinations/{destinationId}:
+    patch:
+      tags: [Destinations]
+      summary: Update destination
+      parameters:
+        - $ref: '#/components/parameters/DestinationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDestinationRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Destination'
+  /routing-rules:
+    get:
+      tags: [RoutingRules]
+      summary: List routing rules
+      responses:
+        '200':
+          description: Routing rule list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoutingRule'
+    post:
+      tags: [RoutingRules]
+      summary: Create routing rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoutingRuleRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutingRule'
+  /events:
+    get:
+      tags: [Events]
+      summary: Query events
+      parameters:
+        - in: query
+          name: cameraId
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: type
+          schema:
+            type: string
+        - in: query
+          name: from
+          schema:
+            type: string
+            format: date-time
+        - in: query
+          name: to
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Event list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+    post:
+      tags: [Events]
+      summary: Create event (manual/simulator)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+  /artifacts:
+    get:
+      tags: [Artifacts]
+      summary: Query generated artifacts
+      parameters:
+        - in: query
+          name: eventId
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: kind
+          schema:
+            type: string
+            enum: [clip, snapshot]
+      responses:
+        '200':
+          description: Artifact list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Artifact'
+  /artifacts/{artifactId}/redeliver:
+    post:
+      tags: [Artifacts]
+      summary: Requeue delivery for an artifact
+      parameters:
+        - $ref: '#/components/parameters/ArtifactId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RedeliverRequest'
+      responses:
+        '202':
+          description: Accepted
+  /monitor/cameras:
+    get:
+      tags: [Cameras]
+      summary: Recorder/camera health status
+      responses:
+        '200':
+          description: Camera monitor rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CameraMonitor'
+  /monitor/overview:
+    get:
+      tags: [Cameras]
+      summary: Camera, edge device, DXNN host, and destination connectivity overview
+      responses:
+        '200':
+          description: End-to-end monitor overview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonitorOverview'
+components:
+  parameters:
+    CameraId:
+      in: path
+      name: cameraId
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DestinationId:
+      in: path
+      name: destinationId
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ArtifactId:
+      in: path
+      name: artifactId
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    Camera:
+      type: object
+      required: [id, name, rtspUrl, webrtcPath, enabled]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        rtspUrl:
+          type: string
+        onvifProfile:
+          type: string
+          nullable: true
+        webrtcPath:
+          type: string
+          description: Stream path used by WebRTC gateway
+        enabled:
+          type: boolean
+        status:
+          type: string
+          enum: [online, offline, degraded]
+    CreateCameraRequest:
+      type: object
+      required: [name, rtspUrl, webrtcPath]
+      properties:
+        name:
+          type: string
+        rtspUrl:
+          type: string
+        onvifProfile:
+          type: string
+        webrtcPath:
+          type: string
+        enabled:
+          type: boolean
+          default: true
+    UpdateCameraRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        rtspUrl:
+          type: string
+        onvifProfile:
+          type: string
+        webrtcPath:
+          type: string
+        enabled:
+          type: boolean
+    EventPolicy:
+      type: object
+      required: [cameraId, mode, eventType]
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          example: motion
+        mode:
+          type: string
+          enum: [clip, snapshot]
+        clip:
+          $ref: '#/components/schemas/ClipConfig'
+        snapshot:
+          $ref: '#/components/schemas/SnapshotConfig'
+    UpsertEventPolicyRequest:
+      type: object
+      required: [eventType, mode]
+      properties:
+        eventType:
+          type: string
+        mode:
+          type: string
+          enum: [clip, snapshot]
+        clip:
+          $ref: '#/components/schemas/ClipConfig'
+        snapshot:
+          $ref: '#/components/schemas/SnapshotConfig'
+    ClipConfig:
+      type: object
+      properties:
+        preSec:
+          type: integer
+          minimum: 0
+          default: 10
+        postSec:
+          type: integer
+          minimum: 1
+          default: 20
+        cooldownSec:
+          type: integer
+          minimum: 0
+          default: 5
+        mergeWindowSec:
+          type: integer
+          minimum: 0
+          default: 3
+    SnapshotConfig:
+      type: object
+      properties:
+        snapshotCount:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 1
+        intervalMs:
+          type: integer
+          minimum: 0
+          default: 0
+        format:
+          type: string
+          enum: [jpg, webp]
+          default: jpg
+    Destination:
+      type: object
+      required: [id, name, type, enabled]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [https_post, sftp]
+        enabled:
+          type: boolean
+        config:
+          type: object
+          additionalProperties: true
+    CreateDestinationRequest:
+      type: object
+      required: [name, type, config]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [https_post, sftp]
+        enabled:
+          type: boolean
+          default: true
+        config:
+          type: object
+          additionalProperties: true
+          example:
+            url: https://receiver.example.com/v1/upload
+            authType: bearer
+            token: secret
+    UpdateDestinationRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+        config:
+          type: object
+          additionalProperties: true
+    RoutingRule:
+      type: object
+      required: [id, cameraId, eventType, destinationId, enabled]
+      properties:
+        id:
+          type: string
+          format: uuid
+        cameraId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        artifactKind:
+          type: string
+          enum: [clip, snapshot, both]
+          default: both
+        destinationId:
+          type: string
+          format: uuid
+        enabled:
+          type: boolean
+    CreateRoutingRuleRequest:
+      type: object
+      required: [cameraId, eventType, destinationId]
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        artifactKind:
+          type: string
+          enum: [clip, snapshot, both]
+        destinationId:
+          type: string
+          format: uuid
+        enabled:
+          type: boolean
+          default: true
+    Event:
+      type: object
+      required: [id, cameraId, type, occurredAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        cameraId:
+          type: string
+          format: uuid
+        type:
+          type: string
+        severity:
+          type: string
+          enum: [low, medium, high]
+        occurredAt:
+          type: string
+          format: date-time
+        payload:
+          type: object
+          additionalProperties: true
+    Artifact:
+      type: object
+      required: [id, eventId, cameraId, kind, uri, checksumSha256, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        cameraId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [clip, snapshot]
+        uri:
+          type: string
+        mimeType:
+          type: string
+        checksumSha256:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    RedeliverRequest:
+      type: object
+      properties:
+        destinationId:
+          type: string
+          format: uuid
+    CreateEventRequest:
+      type: object
+      required: [cameraId, type]
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          default: motion
+        severity:
+          type: string
+          enum: [low, medium, high]
+          default: medium
+        payload:
+          type: object
+          additionalProperties: true
+    AIModelSettings:
+      type: object
+      required: [enabled, modelPath, timeoutSec, pollSec, cooldownSec]
+      properties:
+        enabled:
+          type: boolean
+        modelPath:
+          type: string
+          example: /opt/vms/models/sample_model.py
+        timeoutSec:
+          type: integer
+          minimum: 1
+        pollSec:
+          type: integer
+          minimum: 1
+        cooldownSec:
+          type: integer
+          minimum: 0
+    CameraROI:
+      type: object
+      required: [cameraId, enabled, zones]
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        enabled:
+          type: boolean
+        zones:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    LoginResponse:
+      type: object
+      required: [accessToken, role]
+      properties:
+        accessToken:
+          type: string
+        role:
+          type: string
+    MeResponse:
+      type: object
+      required: [username, role, authEnabled]
+      properties:
+        username:
+          type: string
+        role:
+          type: string
+        authEnabled:
+          type: boolean
+    CameraMonitor:
+      type: object
+      required: [cameraId, name, status]
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+        connected:
+          type: boolean
+          nullable: true
+        lastConnectReason:
+          type: string
+          nullable: true
+        ringRunning:
+          type: boolean
+          nullable: true
+        ringRestartCount:
+          type: integer
+          nullable: true
+        lastRingExitCode:
+          type: integer
+          nullable: true
+        lastProbeAt:
+          type: string
+          format: date-time
+          nullable: true
+    HttpProbe:
+      type: object
+      properties:
+        url:
+          type: string
+          nullable: true
+        reachable:
+          type: boolean
+        ok:
+          type: boolean
+        httpStatus:
+          type: integer
+          nullable: true
+        latencyMs:
+          type: integer
+          nullable: true
+        error:
+          type: string
+          nullable: true
+    MonitorDestination:
+      type: object
+      properties:
+        destinationId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+        enabled:
+          type: boolean
+        url:
+          type: string
+          nullable: true
+        apiMode:
+          type: string
+          nullable: true
+        probe:
+          $ref: '#/components/schemas/HttpProbe'
+        lastDeliveryStatus:
+          type: string
+          nullable: true
+        lastDeliveryAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastDeliveryHttpStatus:
+          type: integer
+          nullable: true
+        lastDeliveryError:
+          type: string
+          nullable: true
+    CameraEdgeHop:
+      type: object
+      properties:
+        connected:
+          type: boolean
+          nullable: true
+        stale:
+          type: boolean
+        lastConnectReason:
+          type: string
+          nullable: true
+        lastProbeAt:
+          type: string
+          format: date-time
+          nullable: true
+        ringRunning:
+          type: boolean
+          nullable: true
+        ringRestartCount:
+          type: integer
+          nullable: true
+        lastRingExitCode:
+          type: integer
+          nullable: true
+    CameraServerRoute:
+      type: object
+      properties:
+        destinationId:
+          type: string
+          format: uuid
+        destinationName:
+          type: string
+        eventType:
+          type: string
+        artifactKind:
+          type: string
+        server:
+          $ref: '#/components/schemas/MonitorDestination'
+    MonitorLink:
+      type: object
+      properties:
+        cameraId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        cameraStatus:
+          type: string
+        cameraToEdge:
+          $ref: '#/components/schemas/CameraEdgeHop'
+        edgeToServer:
+          type: array
+          items:
+            $ref: '#/components/schemas/CameraServerRoute'
+    MonitorOverview:
+      type: object
+      properties:
+        checkedAt:
+          type: string
+          format: date-time
+        edge:
+          type: object
+          properties:
+            deviceName:
+              type: string
+            api:
+              type: object
+              properties:
+                ok:
+                  type: boolean
+            database:
+              type: object
+              properties:
+                ok:
+                  type: boolean
+            recorder:
+              type: object
+              properties:
+                ok:
+                  type: boolean
+                connectedCameraCount:
+                  type: integer
+                cameraCount:
+                  type: integer
+                staleCameraCount:
+                  type: integer
+                lastProbeAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+                staleAfterSec:
+                  type: integer
+            dxnnHost:
+              allOf:
+                - $ref: '#/components/schemas/HttpProbe'
+                - type: object
+                  properties:
+                    inferUrl:
+                      type: string
+                      nullable: true
+                    healthUrl:
+                      type: string
+                      nullable: true
+        destinations:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonitorDestination'
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/MonitorLink'
+    DiscoverCamerasRequest:
+      type: object
+      properties:
+        cidr:
+          type: string
+          example: 192.168.0.0/24
+        useOnvif:
+          type: boolean
+          default: true
+        onvifTimeoutMs:
+          type: integer
+          default: 1500
+        username:
+          type: string
+        password:
+          type: string
+        ports:
+          type: array
+          items:
+            type: integer
+        maxHosts:
+          type: integer
+        timeoutMs:
+          type: integer
+    DiscoveredCamera:
+      type: object
+      properties:
+        ip:
+          type: string
+        rtspUrl:
+          type: string
+        detail:
+          type: string
+        onvif:
+          $ref: '#/components/schemas/OnvifDevice'
+    OnvifDevice:
+      type: object
+      properties:
+        ip:
+          type: string
+        xaddrs:
+          type: array
+          items:
+            type: string
+        urn:
+          type: string
+          nullable: true
+        types:
+          type: string
+    DiscoverCamerasResponse:
+      type: object
+      properties:
+        cidr:
+          type: string
+        onvifFound:
+          type: integer
+        onvifDevices:
+          type: array
+          items:
+            $ref: '#/components/schemas/OnvifDevice'
+        scannedHosts:
+          type: integer
+        foundCount:
+          type: integer
+        cameras:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscoveredCamera'
+    HashPasswordRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+        iterations:
+          type: integer
+          default: 390000
+    HashPasswordResponse:
+      type: object
+      required: [passwordHash]
+      properties:
+        passwordHash:
+          type: string

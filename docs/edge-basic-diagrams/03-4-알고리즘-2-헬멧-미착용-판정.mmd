@@ -1,0 +1,20 @@
+flowchart TD
+    A[person/head/helmet detections] --> B[confidence 기준 필터]
+    B --> C[person bbox 안에 head 중심점 포함 여부 계산]
+    C --> D[person_with_head 생성]
+    D --> E{helmet 존재하는가?}
+    E -- Yes --> R[missing 상태 해제<br/>missing_since=None<br/>missing_active=False]
+    E -- No --> F{person_with_head 존재?}
+    F -- Yes --> G[missing_now = true]
+    F -- No --> H{head가 전혀 없고<br/>person은 있는가?}
+    H -- Yes --> I[Fallback<br/>missing_now = true]
+    H -- No --> R
+    G --> J[missing_since 기록/유지]
+    I --> J
+    J --> K[missing_for 계산]
+    K --> L{missing_for >= holdSec?}
+    L -- No --> M[대기]
+    L -- Yes --> N{cooldown 경과?}
+    N -- No --> M
+    N -- Yes --> O[helmet_missing_in_roi 이벤트 생성]
+    O --> P[missing_active = true]

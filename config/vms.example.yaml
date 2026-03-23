@@ -1,0 +1,80 @@
+server:
+  name: vms-8ch
+  timezone: Asia/Seoul
+
+limits:
+  max_cameras: 8
+
+media:
+  gateway: mediamtx
+  webrtc:
+    enabled: true
+    ice_servers:
+      - urls:
+          - stun:stun.l.google.com:19302
+  ingest:
+    reconnect_backoff_ms: 2000
+    max_reconnect_backoff_ms: 30000
+
+storage:
+  root_dir: /var/lib/vms
+  clips_dir: /var/lib/vms/clips
+  snapshots_dir: /var/lib/vms/snapshots
+  retention_days: 30
+
+events:
+  default_type: motion
+  policies:
+    - camera_ref: cam-01
+      event_type: motion
+      mode: clip
+      clip:
+        pre_sec: 10
+        post_sec: 20
+        cooldown_sec: 5
+        merge_window_sec: 3
+    - camera_ref: cam-02
+      event_type: motion
+      mode: snapshot
+      snapshot:
+        snapshot_count: 1
+        interval_ms: 0
+        format: jpg
+
+delivery:
+  queue:
+    worker_count: 4
+  retry:
+    max_attempts: 5
+    backoff_seconds: [5, 15, 30, 60, 120]
+    timeout_sec: 15
+  destinations:
+    - name: site-a-http
+      type: https_post
+      enabled: true
+      config:
+        url: https://receiver.example.com/v1/vms/artifacts
+        auth:
+          type: bearer
+          token_env: DEST_HTTP_BEARER_TOKEN
+        include_metadata_json: true
+        include_checksum_sha256: true
+    - name: site-b-sftp
+      type: sftp
+      enabled: false
+      config:
+        host: sftp.example.com
+        port: 22
+        username: vms_uploader
+        private_key_path: /run/secrets/sftp_key
+        remote_path: /incoming/vms
+  routing_rules:
+    - camera_ref: cam-01
+      event_type: motion
+      artifact_kind: clip
+      destination_name: site-a-http
+    - camera_ref: cam-02
+      event_type: motion
+      artifact_kind: snapshot
+      destination_name: site-a-http
+

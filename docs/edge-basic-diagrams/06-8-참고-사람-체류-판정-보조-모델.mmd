@@ -1,0 +1,8 @@
+flowchart TD
+    A[프레임에서 person 검출] --> B{person_count > 0?}
+    B -- Yes --> C[present_start_ts 시작/유지]
+    C --> D{present_for >= dwellSec?}
+    D -- No --> E[waiting-person-dwell]
+    D -- Yes --> F[person_dwell trigger=true]
+    B -- No --> G[present_start_ts 초기화]
+    G --> H[no-person]
