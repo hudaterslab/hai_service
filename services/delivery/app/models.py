@@ -19,6 +19,7 @@ class DeliveryJob:
     destination_type: str
     destination_enabled: bool
     config: dict[str, Any]
+    event_payload: dict[str, Any]
     event_type: str
     occurred_at: datetime | str | None
     camera_id: str
@@ -38,6 +39,7 @@ class DeliveryJob:
             destination_type=str(row["type"]),
             destination_enabled=bool(row["enabled"]),
             config=config if isinstance(config, dict) else {},
+            event_payload=row.get("payload_json") if isinstance(row.get("payload_json"), dict) else {},
             event_type=str(row.get("event_type") or ""),
             occurred_at=row.get("occurred_at"),
             camera_id=str(row.get("camera_id") or ""),
@@ -51,4 +53,3 @@ class DeliveryJob:
     @property
     def local_file(self) -> Path:
         return Path(self.local_path)
-

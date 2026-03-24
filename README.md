@@ -108,7 +108,7 @@ DXRT/DeepX 런타임을 함께 사용할 경우 추가로 필요합니다.
 ### 6.1 환경 파일 생성
 
 ```bash
-cd /media/fishduke/06800C3B800C3429/WorkWithCodex/vms-8ch-webrtc
+cd /path/to/vms-8ch-webrtc
 ./scripts/linux/deploy-stack.sh init
 ```
 

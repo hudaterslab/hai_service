@@ -36,8 +36,7 @@ function formatTsLocal(ts) {
   if (!ts) return "-";
   const d = new Date(ts);
   if (Number.isNaN(d.getTime())) return String(ts);
-  const parts = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Asia/Seoul",
+  const parts = new Intl.DateTimeFormat(undefined, {
     hour12: false,
     year: "numeric",
     month: "2-digit",
@@ -48,7 +47,7 @@ function formatTsLocal(ts) {
     fractionalSecondDigits: 3,
   }).formatToParts(d);
   const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}.${values.fractionalSecond} KST`;
+  return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}.${values.fractionalSecond}`;
 }
 
 const EVENT_TYPES = [

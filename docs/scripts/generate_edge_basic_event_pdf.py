@@ -20,7 +20,7 @@ from reportlab.platypus import (
 )
 
 
-ROOT = Path("/media/fishduke/06800C3B800C3429/WorkWithCodex/vms-8ch-webrtc")
+ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "output/pdf/hanjin-cctv-event-judgment-algorithms-ko-2026-03-18.pdf"
 DIAGRAM_DIR = ROOT / "docs/edge-basic-diagrams/generated"
 

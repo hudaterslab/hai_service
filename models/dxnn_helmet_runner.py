@@ -447,6 +447,7 @@ def main() -> None:
         engine = get_engine(model_path)
         input_h, input_w = infer_input_hw(engine, meta, req, model_path)
         frame = capture_frame(source_path, timeout_sec, offset_sec=offset_sec)
+        frame_h, frame_w = frame.shape[:2]
         input_tensor, letterbox = preprocess_for_engine(frame, input_h, input_w, engine)
         outputs = engine.run([input_tensor])
         output_tensor = select_output_tensor(outputs)
@@ -467,6 +468,8 @@ def main() -> None:
             "helmetCount": len(helmets),
             "fallbackNoHead": bool(trigger_by_person_only),
             "totalDetections": len(detections),
+            "imageWidth": int(frame_w),
+            "imageHeight": int(frame_h),
         }
         score = 0.99 if trigger else (0.2 if people_with_head else 0.01)
         label = "helmet-missing" if trigger else ("helmet-present" if helmets else "no-person-or-head")

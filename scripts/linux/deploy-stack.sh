@@ -64,9 +64,15 @@ init_env() {
     echo "$ENV_FILE already exists"
   fi
 
-  local data_root
-  data_root="$(awk -F= '$1=="VMS_DATA_ROOT"{print $2}' "$ENV_FILE" | tail -n 1)"
-  if [[ -n "$data_root" ]]; then
+  local data_root raw_data_root env_dir
+  raw_data_root="$(awk -F= '$1=="VMS_DATA_ROOT"{print $2}' "$ENV_FILE" | tail -n 1)"
+  if [[ -n "$raw_data_root" ]]; then
+    if [[ "$raw_data_root" = /* ]]; then
+      data_root="$raw_data_root"
+    else
+      env_dir="$(cd "$(dirname "$ENV_FILE")" && pwd -P)"
+      data_root="$env_dir/$raw_data_root"
+    fi
     mkdir -p "$data_root/media" "$data_root/redis"
     echo "Ensured runtime dirs under $data_root"
   fi

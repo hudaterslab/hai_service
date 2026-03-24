@@ -20,7 +20,7 @@ from reportlab.platypus import (
 )
 
 
-ROOT = Path("/media/fishduke/06800C3B800C3429/WorkWithCodex/vms-8ch-webrtc")
+ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "output" / "pdf" / "WEBUI_MANUAL_KO_2026-03-10.pdf"
 IMG = ROOT / "docs" / "webui-screenshots"
 
@@ -399,7 +399,7 @@ story.append(
 story.append(Paragraph("7. 빠른 점검 명령", STYLES["SectionKo"]))
 story.append(
     Paragraph(
-        "cd /media/fishduke/06800C3B800C3429/WorkWithCodex/vms-8ch-webrtc<br/>"
+        f"cd {ROOT}<br/>"
         "docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps<br/>"
         "curl http://127.0.0.1:8080/healthz<br/>"
         "docker logs vms-api --tail 200<br/>"

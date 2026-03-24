@@ -9,7 +9,7 @@ def resolve_device_name() -> str:
     explicit = os.getenv("EDGE_DEVICE_NAME", "").strip()
     if explicit:
         return explicit
-    host_file = os.getenv("EDGE_DEVICE_NAME_FILE", "/etc/host_hostname")
+    host_file = os.getenv("EDGE_DEVICE_NAME_FILE", "")
     try:
         txt = Path(host_file).read_text(encoding="utf-8", errors="ignore").strip()
         if txt:
@@ -32,8 +32,9 @@ class RecorderSettings:
 
     @classmethod
     def from_env(cls) -> "RecorderSettings":
+        project_root = Path(os.getenv("PROJECT_ROOT", Path(__file__).resolve().parents[3]))
         return cls(
-            media_root=Path(os.getenv("MEDIA_ROOT", "/var/lib/vms")),
+            media_root=Path(os.getenv("MEDIA_ROOT", str(project_root / "runtime" / "media"))),
             ffmpeg_bin=os.getenv("FFMPEG_BIN", "ffmpeg"),
             use_ffmpeg_artifacts=os.getenv("USE_FFMPEG_ARTIFACTS", "false").lower() == "true",
             enable_rtsp_ring_buffer=os.getenv("ENABLE_RTSP_RING_BUFFER", "false").lower() == "true",

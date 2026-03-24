@@ -253,10 +253,12 @@ def main() -> None:
 
     try:
         frame = get_frame(source_path, offset_sec=offset_sec)
+        frame_h, frame_w = frame.shape[:2]
         extra = req.get("extra") if isinstance(req.get("extra"), dict) else {}
         rotate_deg = int(req.get("rotationDeg", extra.get("rotationDeg", 0)) or 0)
         if rotate_deg in (90, 180, 270):
             frame = apply_rotation(frame, rotate_deg)
+            frame_h, frame_w = frame.shape[:2]
         person_count, detections = detect_person(frame, req)
     except Exception as ex:
         print(
@@ -298,6 +300,8 @@ def main() -> None:
                         "personCount": person_count,
                         "presentForSec": round(present_for, 2),
                         "thresholdSec": dwell_sec,
+                        "imageWidth": int(frame_w),
+                        "imageHeight": int(frame_h),
                     },
                 }
                 print(json.dumps(out, ensure_ascii=True))
@@ -314,6 +318,8 @@ def main() -> None:
                         "personCount": person_count,
                         "presentForSec": round(present_for, 2),
                         "thresholdSec": dwell_sec,
+                        "imageWidth": int(frame_w),
+                        "imageHeight": int(frame_h),
                     },
                     detections,
                 )
@@ -326,7 +332,7 @@ def main() -> None:
                 False,
                 0.0,
                 "no-person",
-                {"detector": "yolo_person_exit", "mode": "person_dwell", "personCount": 0},
+                {"detector": "yolo_person_exit", "mode": "person_dwell", "personCount": 0, "imageWidth": int(frame_w), "imageHeight": int(frame_h)},
                 [],
             )
         )

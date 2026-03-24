@@ -23,11 +23,11 @@ Environment overrides:
   INSTALL_DOCKER=true|false
   INSTALL_DXRT=true|false
   DXRT_INSTALL_MODE=bundle|source
-  DXRT_DIR=/opt/deepx/dx_rt
-  DXRT_REPO=https://github.com/DEEPX-AI/dx_rt.git
-  DXRT_VENV_DIR=/opt/vms/venv-dx-runtime
-  DXRT_INSTALL_PREFIX=/usr/local
-  ONNXLIB_DIRS=/usr/lib:/usr/local/lib
+  DXRT_DIR
+  DXRT_REPO
+  DXRT_VENV_DIR
+  DXRT_INSTALL_PREFIX
+  ONNXLIB_DIRS
 EOF
 }
 

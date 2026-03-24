@@ -41,6 +41,7 @@ services:
       dockerfile: services/dxnn-host/Dockerfile
     container_name: vms-dxnn-host-infer
     environment:
+      VMS_TIMEZONE: "${VMS_TIMEZONE:-Asia/Seoul}"
       DXRT_AUTO_PIP_INSTALL: "true"
       DXRT_PY_PACKAGE_PATH: /opt/dxrt/python_package
       DXRT_HOST_LIB_PATH: /opt/dxrt_host_lib
@@ -90,6 +91,7 @@ services:
       DATABASE_URL: postgres://vms:vms@postgres:5432/vms?sslmode=disable
       REDIS_URL: redis://redis:6379/0
       MEDIA_MTX_HTTP_URL: http://mediamtx:8889
+      VMS_TIMEZONE: "${VMS_TIMEZONE:-Asia/Seoul}"
       VMS_CONFIG_PATH: /etc/vms/vms.yaml
       AUTH_ENABLED: "false"
       JWT_SECRET: change-me
@@ -159,6 +161,7 @@ services:
       DATABASE_URL: postgres://vms:vms@postgres:5432/vms?sslmode=disable
       REDIS_URL: redis://redis:6379/0
       MEDIA_MTX_RTSP_URL: rtsp://mediamtx:8554
+      VMS_TIMEZONE: "${VMS_TIMEZONE:-Asia/Seoul}"
       VMS_CONFIG_PATH: /etc/vms/vms.yaml
       MEDIA_ROOT: /var/lib/vms
       MODEL_PYTHON_BIN: python
@@ -206,6 +209,7 @@ services:
     environment:
       DATABASE_URL: postgres://vms:vms@postgres:5432/vms?sslmode=disable
       REDIS_URL: redis://redis:6379/0
+      VMS_TIMEZONE: "${VMS_TIMEZONE:-Asia/Seoul}"
       DEST_HTTP_BEARER_TOKEN: change-me
       EDGE_DEVICE_NAME_FILE: /etc/host_hostname
       DELETE_LOCAL_ARTIFACT_ON_SUCCESS: "true"

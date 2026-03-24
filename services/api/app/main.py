@@ -43,7 +43,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgres://vms:vms@postgres:5432/vms?s
 STATIC_DIR = Path(__file__).parent / "static"
 DEFAULT_BASE_DIR = Path(__file__).resolve().parents[3] if len(Path(__file__).resolve().parents) > 3 else Path("/app")
 BASE_DIR = Path(os.getenv("PROJECT_ROOT", str(DEFAULT_BASE_DIR)))
-MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", "/var/lib/vms"))
+MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", str(BASE_DIR / "runtime" / "media")))
 EVENT_PACKS_DIR = BASE_DIR / "config" / "event_packs"
 FFMPEG_BIN = os.getenv("FFMPEG_BIN", "ffmpeg")
 FFPROBE_BIN = os.getenv("FFPROBE_BIN", "ffprobe")
@@ -60,6 +60,7 @@ DXNN_HOST_INFER_URL = os.getenv("DXNN_HOST_INFER_URL", "").strip()
 MONITOR_HTTP_TIMEOUT_SEC = max(float(os.getenv("MONITOR_HTTP_TIMEOUT_SEC", "3.0")), 0.5)
 MONITOR_RECORDER_STALE_SEC = max(int(os.getenv("MONITOR_RECORDER_STALE_SEC", "20")), 5)
 KST = timezone(timedelta(hours=9), "KST")
+SYSTEM_TZ = datetime.now().astimezone().tzinfo or timezone.utc
 KST_TIME_ONLY_RE = re.compile(r"^(?P<hour>\d{1,2}):(?P<minute>\d{2})(?::(?P<second>\d{2})(?:\.(?P<millis>\d{1,3}))?)?$")
 
 app = FastAPI(title="Edge Console Control API", version="0.1.0")
@@ -67,6 +68,40 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 bearer = HTTPBearer(auto_error=False)
 DISCOVER_JOBS: dict[str, dict[str, Any]] = {}
 DISCOVER_JOBS_LOCK = threading.Lock()
+
+
+def _env_path_list(name: str) -> list[Path]:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return []
+    return [Path(part).expanduser() for part in raw.split(os.pathsep) if part.strip()]
+
+
+def _default_model_roots() -> list[Path]:
+    return [BASE_DIR / "models", BASE_DIR]
+
+
+def _model_roots() -> list[Path]:
+    roots = _env_path_list("MODEL_SEARCH_ROOTS") or _default_model_roots()
+    uniq: list[Path] = []
+    seen: set[str] = set()
+    for root in roots:
+        key = str(root.resolve(strict=False)).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(root)
+    return uniq
+
+
+def _runner_candidates(env_name: str, bundled_name: str) -> list[Path]:
+    candidates: list[Path] = []
+    env_value = os.getenv(env_name, "").strip()
+    if env_value:
+        candidates.append(Path(env_value).expanduser())
+    for root in _model_roots():
+        candidates.append(root / bundled_name)
+    return candidates
 
 
 def db_conn():
@@ -199,7 +234,7 @@ def _normalize_destination_config(dest_type: str, config: Any) -> dict[str, Any]
 def _to_iso8601(value: Any) -> Optional[str]:
     if isinstance(value, datetime):
         dt = value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
-        return dt.astimezone(KST).isoformat(timespec="milliseconds")
+        return dt.astimezone(SYSTEM_TZ).isoformat(timespec="milliseconds")
     if isinstance(value, str):
         raw = value.strip()
         if not raw:
@@ -226,11 +261,11 @@ def _normalize_kst_datetime_input(value: Any) -> Any:
         return None
     matched = KST_TIME_ONLY_RE.fullmatch(raw)
     if matched:
-        now_kst = datetime.now(KST)
+        now_local = datetime.now(SYSTEM_TZ)
         second = int(matched.group("second") or "0")
         millis_raw = matched.group("millis") or "0"
         millis = int(millis_raw.ljust(3, "0")[:3])
-        return now_kst.replace(
+        return now_local.replace(
             hour=int(matched.group("hour")),
             minute=int(matched.group("minute")),
             second=second,
@@ -241,8 +276,34 @@ def _normalize_kst_datetime_input(value: Any) -> Any:
     except ValueError:
         return value
     if parsed.tzinfo is None:
-        return parsed.replace(tzinfo=KST)
+        return parsed.replace(tzinfo=SYSTEM_TZ)
     return parsed
+
+
+def _merge_infer_metadata(payload: dict[str, Any], infer: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(payload or {})
+    infer_payload = infer.get("payload") if isinstance(infer.get("payload"), dict) else {}
+    merged.update(infer_payload)
+    raw_dets = infer.get("detections") if isinstance(infer.get("detections"), list) else []
+    detections = [det for det in raw_dets if isinstance(det, dict)]
+    if detections:
+        merged["detections"] = detections
+    for src_key, dst_key in (
+        ("imageWidth", "imageWidth"),
+        ("imageHeight", "imageHeight"),
+        ("frameWidth", "imageWidth"),
+        ("frameHeight", "imageHeight"),
+        ("sourceWidth", "imageWidth"),
+        ("sourceHeight", "imageHeight"),
+    ):
+        value = infer_payload.get(src_key)
+        if value is None:
+            continue
+        try:
+            merged[dst_key] = int(round(float(value)))
+        except Exception:
+            continue
+    return merged
 
 
 def _probe_http(url: str, *, method: str = "GET", headers: Optional[dict[str, str]] = None) -> dict[str, Any]:
@@ -702,7 +763,7 @@ def _camera_public(row: dict[str, Any]) -> dict[str, Any]:
 
 def _list_model_candidates() -> list[dict[str, Any]]:
     exts = {".pt", ".onnx", ".engine", ".py", ".exe", ".dxnn"}
-    roots = [Path("/opt/vms/models"), BASE_DIR / "models", BASE_DIR]
+    roots = _model_roots()
     out: list[dict[str, Any]] = []
     seen: set[str] = set()
     for root in roots:
@@ -1003,18 +1064,10 @@ def _run_model_inference(
     path = Path(model_path)
     model_ext = path.suffix.lower()
     if model_ext == ".dxnn":
-        runner_candidates = [
-            os.getenv("DEFAULT_DXNN_MODEL_RUNNER", "").strip(),
-            str(BASE_DIR / "models" / "dxnn_helmet_runner.py"),
-            "/opt/vms/models/dxnn_helmet_runner.py",
-        ]
+        runner_candidates = _runner_candidates("DEFAULT_DXNN_MODEL_RUNNER", "dxnn_helmet_runner.py")
     else:
-        runner_candidates = [
-            os.getenv("DEFAULT_AI_MODEL_RUNNER", "").strip(),
-            str(BASE_DIR / "models" / "yolo_person_exit_model.py"),
-            "/opt/vms/models/yolo_person_exit_model.py",
-        ]
-    runner_path = next((Path(p) for p in runner_candidates if p and Path(p).exists()), None)
+        runner_candidates = _runner_candidates("DEFAULT_AI_MODEL_RUNNER", "yolo_person_exit_model.py")
+    runner_path = next((p for p in runner_candidates if p.exists()), None)
     run_env = os.environ.copy()
 
     if model_ext == ".py":
@@ -1116,7 +1169,7 @@ def _safe_artifact_token(text: str, fallback: str) -> str:
 def _manual_snapshot_path(camera_id: str, camera_name: str, event_type: str, occurred_at: datetime) -> Path:
     label = "_".join(
         [
-            occurred_at.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%S"),
+            occurred_at.astimezone(SYSTEM_TZ).strftime("%Y%m%dT%H%M%S"),
             _safe_artifact_token(camera_name, "camera"),
             _safe_artifact_token(event_type, "event"),
             uuid4().hex[:8],
@@ -1897,8 +1950,7 @@ def infer_and_send_video_events(
                 image_bytes = _capture_snapshot_bytes_from_video_file(body.videoPath, offset_sec=offset, rotate_deg=rotate_deg)
             except Exception as ex:
                 raise HTTPException(status_code=500, detail=f"video snapshot failed after trigger: {ex}")
-            payload = dict(body.payload or {})
-            payload.update(infer.get("payload") if isinstance(infer.get("payload"), dict) else {})
+            payload = _merge_infer_metadata(dict(body.payload or {}), infer)
             payload.setdefault("source", "video_infer_loop")
             payload.setdefault("videoPath", body.videoPath)
             payload["offsetSec"] = round(offset, 3)
@@ -2257,18 +2309,10 @@ def get_ai_preview(cameraId: str, conf: Optional[float] = None, _=Depends(requir
         path = Path(model_path)
         model_ext = path.suffix.lower()
         if model_ext == ".dxnn":
-            runner_candidates = [
-                os.getenv("DEFAULT_DXNN_MODEL_RUNNER", "").strip(),
-                str(BASE_DIR / "models" / "dxnn_helmet_runner.py"),
-                "/opt/vms/models/dxnn_helmet_runner.py",
-            ]
+            runner_candidates = _runner_candidates("DEFAULT_DXNN_MODEL_RUNNER", "dxnn_helmet_runner.py")
         else:
-            runner_candidates = [
-                os.getenv("DEFAULT_AI_MODEL_RUNNER", "").strip(),
-                str(BASE_DIR / "models" / "yolo_person_exit_model.py"),
-                "/opt/vms/models/yolo_person_exit_model.py",
-            ]
-        runner_path = next((Path(p) for p in runner_candidates if p and Path(p).exists()), None)
+            runner_candidates = _runner_candidates("DEFAULT_AI_MODEL_RUNNER", "yolo_person_exit_model.py")
+        runner_path = next((p for p in runner_candidates if p.exists()), None)
         run_env = os.environ.copy()
 
         if model_ext == ".py":

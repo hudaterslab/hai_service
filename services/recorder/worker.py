@@ -6,6 +6,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo
 
 import psycopg
 from psycopg.rows import dict_row
@@ -15,9 +16,9 @@ from recorder.app.config import RecorderSettings
 
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgres://vms:vms@postgres:5432/vms?sslmode=disable")
-MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", "/var/lib/vms"))
 DEFAULT_BASE_DIR = Path(__file__).resolve().parents[2] if len(Path(__file__).resolve().parents) > 2 else Path("/app")
 BASE_DIR = Path(os.getenv("PROJECT_ROOT", str(DEFAULT_BASE_DIR)))
+MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", str(BASE_DIR / "runtime" / "media")))
 EVENT_PACKS_DIR = Path(os.getenv("EVENT_PACKS_DIR", str(BASE_DIR / "config" / "event_packs")))
 MODEL_PYTHON_BIN = os.getenv("MODEL_PYTHON_BIN", "python")
 CAMERA_CONNECT_TIMEOUT_SEC = float(os.getenv("CAMERA_CONNECT_TIMEOUT_SEC", "2.5"))
@@ -38,6 +39,41 @@ DELIVERY_DEDUP_WINDOW_SEC = max(int(os.getenv("DELIVERY_DEDUP_WINDOW_SEC", "10")
 KST = timezone(timedelta(hours=9))
 RECORDER_SETTINGS = RecorderSettings.from_env()
 ARTIFACT_BUILDER = ArtifactBuilder(RECORDER_SETTINGS)
+
+
+def _env_path_list(name: str) -> list[Path]:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return []
+    return [Path(part).expanduser() for part in raw.split(os.pathsep) if part.strip()]
+
+
+def _default_model_roots() -> list[Path]:
+    return [BASE_DIR / "models", BASE_DIR]
+
+
+def _runner_candidates(env_name: str, bundled_name: str) -> list[Path]:
+    candidates: list[Path] = []
+    env_value = os.getenv(env_name, "").strip()
+    if env_value:
+        candidates.append(Path(env_value).expanduser())
+    for root in (_env_path_list("MODEL_SEARCH_ROOTS") or _default_model_roots()):
+        candidates.append(root / bundled_name)
+    return candidates
+
+
+def _event_timezone():
+    tz_name = os.getenv("VMS_TIMEZONE", "Asia/Seoul").strip() or "Asia/Seoul"
+    try:
+        return ZoneInfo(tz_name)
+    except Exception:
+        return KST
+
+
+def _now_local_iso() -> str:
+    return datetime.now(timezone.utc).astimezone(_event_timezone()).isoformat(timespec="milliseconds")
+
+
 RING_BUFFER_MANAGER = RingBufferManager(RECORDER_SETTINGS)
 
 CAMERA_RUNTIME_STATE: dict[str, dict] = {}
@@ -470,18 +506,10 @@ def run_ai_model_for_camera(cfg: dict, camera: dict, roi: dict, person_event_rul
 
     model_ext = path.suffix.lower()
     if model_ext == ".dxnn":
-        runner_candidates = [
-            os.getenv("DEFAULT_DXNN_MODEL_RUNNER", "").strip(),
-            str(BASE_DIR / "models" / "dxnn_helmet_runner.py"),
-            "/opt/vms/models/dxnn_helmet_runner.py",
-        ]
+        runner_candidates = _runner_candidates("DEFAULT_DXNN_MODEL_RUNNER", "dxnn_helmet_runner.py")
     else:
-        runner_candidates = [
-            os.getenv("DEFAULT_AI_MODEL_RUNNER", "").strip(),
-            str(BASE_DIR / "models" / "yolo_person_exit_model.py"),
-            "/opt/vms/models/yolo_person_exit_model.py",
-        ]
-    runner_path = next((Path(p) for p in runner_candidates if p and Path(p).exists()), None)
+        runner_candidates = _runner_candidates("DEFAULT_AI_MODEL_RUNNER", "yolo_person_exit_model.py")
+    runner_path = next((p for p in runner_candidates if p.exists()), None)
     run_env = os.environ.copy()
     if model_ext == ".py":
         cmd = [MODEL_PYTHON_BIN, model_path]
@@ -505,7 +533,7 @@ def run_ai_model_for_camera(cfg: dict, camera: dict, roi: dict, person_event_rul
         "eventType": "motion",
         "rtspUrl": camera["rtsp_url"],
         "webrtcPath": camera["webrtc_path"],
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": _now_local_iso(),
         "roi": roi,
         "personEventRule": person_event_rule,
         "confidenceThreshold": float(cfg.get("confidenceThreshold", 0.35)),
@@ -636,6 +664,31 @@ def _bbox_xyxy(det: dict) -> tuple[float, float, float, float]:
         return x1, y1, x2, y2
     cx, cy = center_of_detection(det)
     return cx, cy, cx, cy
+
+
+def _merge_inference_payload(payload: dict[str, Any], model_out: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(payload or {})
+    model_payload = model_out.get("payload") if isinstance(model_out.get("payload"), dict) else {}
+    raw_dets = model_out.get("detections") if isinstance(model_out.get("detections"), list) else []
+    detections = [d for d in raw_dets if isinstance(d, dict)]
+    if detections:
+        merged["detections"] = detections
+    for src_key, dst_key in (
+        ("imageWidth", "imageWidth"),
+        ("imageHeight", "imageHeight"),
+        ("frameWidth", "imageWidth"),
+        ("frameHeight", "imageHeight"),
+        ("sourceWidth", "imageWidth"),
+        ("sourceHeight", "imageHeight"),
+    ):
+        value = model_payload.get(src_key)
+        if value is None:
+            continue
+        try:
+            merged[dst_key] = int(round(float(value)))
+        except Exception:
+            continue
+    return merged
 
 
 def _person_has_head(person_det: dict, head_dets: list[dict]) -> bool:
@@ -1026,6 +1079,7 @@ def detect_events_once() -> int:
                             if not event_policy_allows(cur, cam_id, ev_type):
                                 continue
                             payload = ev.get("payload", {}) if isinstance(ev.get("payload"), dict) else {}
+                            payload = _merge_inference_payload(payload, out)
                             payload["source"] = "event_pack"
                             payload["packId"] = pack_cfg.get("packId")
                             payload["packVersion"] = pack_cfg.get("packVersion")
@@ -1053,6 +1107,7 @@ def detect_events_once() -> int:
                     if not event_policy_allows(cur, cam_id, ev_type):
                         continue
                     payload = mev.get("payload", {}) if isinstance(mev.get("payload"), dict) else {}
+                    payload = _merge_inference_payload(payload, out)
                     payload["source"] = "ai_model_event"
                     payload["modelPath"] = cam_cfg.get("modelPath")
                     cur.execute(
@@ -1079,6 +1134,7 @@ def detect_events_once() -> int:
                 payload = out.get("payload", {}) if isinstance(out, dict) else {}
                 if not isinstance(payload, dict):
                     payload = {"rawPayload": payload}
+                payload = _merge_inference_payload(payload, out if isinstance(out, dict) else {})
                 if not event_policy_allows(cur, cam_id, str(event_type)):
                     continue
                 if not should_trigger(cur, cam_id, int(cam_cfg.get("cooldownSec", 10))):

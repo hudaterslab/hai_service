@@ -1,5 +1,6 @@
 import os
 import re
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -33,22 +34,28 @@ class TransferNaming:
                 pass
         return datetime.now(timezone.utc)
 
-    def kst_text(self, value: Any) -> str:
-        return self.parse_dt(value).astimezone(self.settings.kst).strftime("%Y%m%d_%H%M%S")
+    def local_dt(self, value: Any) -> datetime:
+        return self.parse_dt(value).astimezone(self.settings.system_tz)
+
+    def local_text(self, value: Any) -> str:
+        return self.local_dt(value).strftime("%Y%m%d_%H%M%S")
+
+    def local_tz_name(self, value: Any) -> str:
+        return self.safe_token(self.local_dt(value).tzname() or "LOCAL", "LOCAL")
 
     def safe_token(self, text: str, fallback: str) -> str:
         cleaned = re.sub(r"[^\w.-]+", "_", (text or "").strip(), flags=re.UNICODE).strip("._")
         return cleaned or fallback
 
     def event_label(self, job: DeliveryJob) -> str:
-        return f"[{self.settings.device_name}][{job.camera_name}][{job.event_type}][{self.kst_text(job.occurred_at)}KST]"
+        return f"[{self.settings.device_name}][{job.camera_name}][{job.event_type}][{self.local_text(job.occurred_at)}{self.local_tz_name(job.occurred_at)}]"
 
     def safe_label(self, job: DeliveryJob) -> str:
         return (
             f"[{self.safe_token(self.settings.device_name, 'edge')}]"
             f"[{self.safe_token(job.camera_name, 'camera')}]"
             f"[{self.safe_token(job.event_type, 'event')}]"
-            f"[{self.kst_text(job.occurred_at)}KST]"
+            f"[{self.local_text(job.occurred_at)}{self.local_tz_name(job.occurred_at)}]"
         )
 
 
@@ -79,7 +86,7 @@ class HttpsDeliveryTransport(DeliveryTransport):
         if not terminal_id:
             raise RuntimeError("terminalId is required for apiMode=cctv_img_v1")
         cctv_id = self.resolve_cctv_id(cfg, job)
-        collected_at = self.naming.parse_dt(job.occurred_at).replace(tzinfo=None).isoformat(timespec="milliseconds")
+        collected_at = self.naming.local_dt(job.occurred_at).replace(tzinfo=None).isoformat(timespec="milliseconds")
         headers = self.auth_headers(cfg)
         files = {
             "image": (f"{self.naming.safe_label(job)}.jpg", open(job.local_path, "rb"), "image/jpeg"),
@@ -90,6 +97,15 @@ class HttpsDeliveryTransport(DeliveryTransport):
             "terminalId": terminal_id,
             "cctvId": str(cctv_id),
         }
+        image_width = self._int_value(job.event_payload, "imageWidth", "frameWidth", "sourceWidth")
+        image_height = self._int_value(job.event_payload, "imageHeight", "frameHeight", "sourceHeight")
+        if image_width is not None:
+            data["imageWidth"] = str(image_width)
+        if image_height is not None:
+            data["imageHeight"] = str(image_height)
+        detected_objects = self._detected_objects(job, image_width, image_height)
+        if detected_objects:
+            data["detectedObjects"] = json.dumps(detected_objects, ensure_ascii=True)
         try:
             response = requests.post(cfg["url"], files=files, data=data, headers=headers, timeout=self.settings.timeout_sec)
             return DeliveryResult(
@@ -125,6 +141,81 @@ class HttpsDeliveryTransport(DeliveryTransport):
         if cfg.get("cctvId") is not None:
             return int(cfg.get("cctvId"))
         raise RuntimeError("cctvId is required for apiMode=cctv_img_v1")
+
+    def _int_value(self, payload: dict[str, Any], *keys: str) -> int | None:
+        for key in keys:
+            value = payload.get(key)
+            if value is None:
+                continue
+            try:
+                parsed = int(round(float(value)))
+            except Exception:
+                continue
+            if parsed > 0:
+                return parsed
+        return None
+
+    def _detected_objects(self, job: DeliveryJob, image_width: int | None, image_height: int | None) -> list[dict[str, Any]]:
+        raw = job.event_payload.get("detections")
+        if not isinstance(raw, list):
+            return []
+        result: list[dict[str, Any]] = []
+        for det in raw:
+            if not isinstance(det, dict):
+                continue
+            box = self._det_box_xyxy(det, image_width, image_height)
+            if box is None:
+                continue
+            item = {
+                "box": box,
+                "label": str(det.get("label") or "object"),
+                "score": round(float(det.get("confidence", det.get("score", 0.0)) or 0.0), 4),
+            }
+            result.append(item)
+        return result
+
+    def _det_box_xyxy(self, det: dict[str, Any], image_width: int | None, image_height: int | None) -> list[int] | None:
+        direct = self._direct_box_xyxy(det)
+        if direct is not None:
+            return [max(0, int(round(v))) for v in direct]
+        if image_width is None or image_height is None:
+            return None
+        if all(key in det for key in ("nx", "ny", "nw", "nh")):
+            x1 = float(det.get("nx", 0.0)) * image_width
+            y1 = float(det.get("ny", 0.0)) * image_height
+            x2 = (float(det.get("nx", 0.0)) + float(det.get("nw", 0.0))) * image_width
+            y2 = (float(det.get("ny", 0.0)) + float(det.get("nh", 0.0))) * image_height
+            return self._clamp_box(x1, y1, x2, y2, image_width, image_height)
+        if all(key in det for key in ("x", "y", "w", "h")):
+            x1 = float(det.get("x", 0.0)) * image_width
+            y1 = float(det.get("y", 0.0)) * image_height
+            x2 = (float(det.get("x", 0.0)) + float(det.get("w", 0.0))) * image_width
+            y2 = (float(det.get("y", 0.0)) + float(det.get("h", 0.0))) * image_height
+            return self._clamp_box(x1, y1, x2, y2, image_width, image_height)
+        return None
+
+    def _direct_box_xyxy(self, det: dict[str, Any]) -> tuple[float, float, float, float] | None:
+        if all(key in det for key in ("x1", "y1", "x2", "y2")):
+            return (
+                float(det.get("x1", 0.0)),
+                float(det.get("y1", 0.0)),
+                float(det.get("x2", 0.0)),
+                float(det.get("y2", 0.0)),
+            )
+        box = det.get("box")
+        if isinstance(box, (list, tuple)) and len(box) == 4:
+            try:
+                return float(box[0]), float(box[1]), float(box[2]), float(box[3])
+            except Exception:
+                return None
+        return None
+
+    def _clamp_box(self, x1: float, y1: float, x2: float, y2: float, image_width: int, image_height: int) -> list[int]:
+        left = min(max(int(round(x1)), 0), image_width)
+        top = min(max(int(round(y1)), 0), image_height)
+        right = min(max(int(round(x2)), 0), image_width)
+        bottom = min(max(int(round(y2)), 0), image_height)
+        return [left, top, max(left, right), max(top, bottom)]
 
 
 class SftpDeliveryTransport(DeliveryTransport):

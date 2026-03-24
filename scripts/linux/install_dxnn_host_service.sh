@@ -3,17 +3,18 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SRC="${ROOT_DIR}/scripts/linux/dxnn_host_infer_service.py"
-DST_DIR="/opt/vms/bin"
+DST_DIR="${DST_DIR:-${ROOT_DIR}/runtime/host/bin}"
 DST="${DST_DIR}/dxnn_host_infer_service.py"
-UNIT="/etc/systemd/system/dxnn-host-infer.service"
+UNIT="${UNIT:-/etc/systemd/system/dxnn-host-infer.service}"
 MODEL_DIR="${ROOT_DIR}/models"
-DXRT_VENV_DIR="${DXRT_VENV_DIR:-/opt/vms/venv-dx-runtime}"
+DXRT_VENV_DIR="${DXRT_VENV_DIR:-${ROOT_DIR}/runtime/host/venv-dx-runtime}"
 PYTHON_BIN="${PYTHON_BIN:-/usr/bin/python3}"
-HOST_MODEL_MAP_FROM="${HOST_MODEL_MAP_FROM:-/opt/vms/models}"
+HOST_MODEL_MAP_FROM="${HOST_MODEL_MAP_FROM:-${MODEL_DIR}}"
 HOST_MODEL_MAP_TO="${HOST_MODEL_MAP_TO:-${MODEL_DIR}}"
 DXNN_CLASS_NAMES="${DXNN_CLASS_NAMES:-helmet,head,person}"
 HOST_DXNN_BIND="${HOST_DXNN_BIND:-0.0.0.0}"
 HOST_DXNN_PORT="${HOST_DXNN_PORT:-18081}"
+HOST_LD_LIBRARY_PATH="${HOST_LD_LIBRARY_PATH:-${LD_LIBRARY_PATH:-}}"
 
 echo "[dxnn-host] install/check start"
 
@@ -41,13 +42,13 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=${PYTHON_BIN} /opt/vms/bin/dxnn_host_infer_service.py
+ExecStart=${PYTHON_BIN} ${DST}
 Environment=HOST_DXNN_BIND=${HOST_DXNN_BIND}
 Environment=HOST_DXNN_PORT=${HOST_DXNN_PORT}
 Environment=HOST_MODEL_MAP_FROM=${HOST_MODEL_MAP_FROM}
 Environment=HOST_MODEL_MAP_TO=${HOST_MODEL_MAP_TO}
 Environment=DXNN_CLASS_NAMES=${DXNN_CLASS_NAMES}
-Environment=LD_LIBRARY_PATH=/usr/local/lib:/usr/lib:/lib
+Environment=LD_LIBRARY_PATH=${HOST_LD_LIBRARY_PATH}
 Restart=always
 RestartSec=2
 User=root

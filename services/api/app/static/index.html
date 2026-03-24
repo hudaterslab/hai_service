@@ -258,7 +258,7 @@
           </select>
           <button type="button" id="aiModelListRefreshBtn">모델 목록 새로고침</button>
           <button type="button" id="aiModelPresetApplyBtn">선택 모델 적용</button>
-          <input name="modelPath" id="aiModelPath" placeholder="/opt/vms/models/yolov8n.pt" />
+          <input name="modelPath" id="aiModelPath" placeholder="models/my_model.onnx" />
           <input name="timeoutSec" id="aiTimeoutSec" type="number" value="20" min="1" />
           <input name="pollSec" id="aiPollSec" type="number" value="3" min="0" step="0.1" />
           <input name="cooldownSec" id="aiCooldownSec" type="number" value="10" min="0" />
@@ -278,7 +278,7 @@
           </select>
           <button type="button" id="cameraModelListRefreshBtn">모델 목록 새로고침</button>
           <button type="button" id="cameraModelPresetApplyBtn">선택 모델 적용</button>
-          <input name="modelPath" id="cameraModelPath" placeholder="/opt/vms/models/yolov8n.pt" />
+          <input name="modelPath" id="cameraModelPath" placeholder="models/my_model.onnx" />
           <div class="sensitivity-control" title="민감도(낮음-높음), 기본 35%">
             <label for="cameraModelConf">민감도</label>
             <input name="confidenceThreshold" id="cameraModelConf" type="range" min="0.05" max="0.95" step="0.05" value="0.35" />

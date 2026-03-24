@@ -562,7 +562,8 @@ def capture_frame(source_path: str, timeout_sec: float, offset_sec: float = 0.0)
 def infer(req: dict[str, Any]) -> dict[str, Any]:
     model_path = str(req.get("modelPath", "")).strip() or os.getenv("DXNN_MODEL_PATH", "").strip()
     map_from = os.getenv("HOST_MODEL_MAP_FROM", "/opt/vms/models").strip()
-    map_to = os.getenv("HOST_MODEL_MAP_TO", "/home/recomputer/vms-8ch-webrtc/models").strip()
+    default_model_dir = str(Path(__file__).resolve().parents[2] / "models")
+    map_to = os.getenv("HOST_MODEL_MAP_TO", default_model_dir).strip()
     if model_path and map_from and map_to and model_path.startswith(map_from):
         model_path = map_to + model_path[len(map_from) :]
     rtsp_url = str(req.get("rtspUrl", "")).strip()
@@ -585,6 +586,7 @@ def infer(req: dict[str, Any]) -> dict[str, Any]:
         engine = get_engine(model_path)
         input_h, input_w = infer_input_hw(engine, meta, req, model_path)
         frame = capture_frame(source_path, timeout_sec, offset_sec=offset_sec)
+        frame_h, frame_w = frame.shape[:2]
         input_tensor, letterbox = preprocess_for_engine(frame, input_h, input_w, engine)
         outputs = engine.run([input_tensor])
         detections = decode_model_outputs(outputs, class_names, conf_thres, roi, letterbox, input_h, input_w)
@@ -604,6 +606,8 @@ def infer(req: dict[str, Any]) -> dict[str, Any]:
             "helmetCount": len(helmets),
             "fallbackNoHead": bool(trigger_by_person_only),
             "totalDetections": len(detections),
+            "imageWidth": int(frame_w),
+            "imageHeight": int(frame_h),
         }
         score = 0.99 if trigger else (0.2 if people_with_head else 0.01)
         label = "helmet-missing" if trigger else ("helmet-present" if helmets else "no-person-or-head")

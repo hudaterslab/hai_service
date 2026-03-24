@@ -85,10 +85,12 @@ def main():
     parser.add_argument("--port", type=int, default=22)
     parser.add_argument("--user", required=True)
     parser.add_argument("--password", required=True)
-    parser.add_argument("--remote-dir", default="/home/recomputer/vms-8ch-webrtc")
+    parser.add_argument("--remote-dir")
     parser.add_argument("--install-dxrt", action="store_true", default=True)
     parser.add_argument("--skip-install-dxrt", action="store_true")
     args = parser.parse_args()
+    if not args.remote_dir:
+        args.remote_dir = f"/home/{args.user}/vms-8ch-webrtc"
 
     root = Path(__file__).resolve().parents[2]
     ssh = paramiko.SSHClient()

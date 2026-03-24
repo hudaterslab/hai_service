@@ -17,9 +17,9 @@ media:
     max_reconnect_backoff_ms: 30000
 
 storage:
-  root_dir: /var/lib/vms
-  clips_dir: /var/lib/vms/clips
-  snapshots_dir: /var/lib/vms/snapshots
+  root_dir: runtime/media
+  clips_dir: runtime/media/clips
+  snapshots_dir: runtime/media/snapshots
   retention_days: 30
 
 events:
@@ -77,4 +77,3 @@ delivery:
       event_type: motion
       artifact_kind: snapshot
       destination_name: site-a-http
-

@@ -253,7 +253,7 @@ function ensureEdgeControls() {
         </select>
         <button type="button" id="cameraModelListRefreshBtn">모델 목록 새로고침</button>
         <button type="button" id="cameraModelPresetApplyBtn">선택 모델 적용</button>
-        <input name="modelPath" id="cameraModelPath" placeholder="/opt/vms/models/yolov8n.pt" />
+        <input name="modelPath" id="cameraModelPath" placeholder="models/my_model.onnx" />
         <div class="sensitivity-control" title="민감도(낮음-높음), 기본 35%">
           <label for="cameraModelConf">민감도</label>
           <input name="confidenceThreshold" id="cameraModelConf" type="range" min="0.05" max="0.95" step="0.05" value="0.35" />
@@ -410,8 +410,7 @@ function formatTsLocal(ts) {
   if (!ts) return "-";
   const d = new Date(ts);
   if (Number.isNaN(d.getTime())) return String(ts);
-  const parts = new Intl.DateTimeFormat("sv-SE", {
-    timeZone: "Asia/Seoul",
+  const parts = new Intl.DateTimeFormat(undefined, {
     hour12: false,
     year: "numeric",
     month: "2-digit",
@@ -422,7 +421,7 @@ function formatTsLocal(ts) {
     fractionalSecondDigits: 3,
   }).formatToParts(d);
   const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}.${values.fractionalSecond} KST`;
+  return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}.${values.fractionalSecond}`;
 }
 
 function statusChip(ok, okText = "정상", badText = "장애") {

@@ -15,6 +15,7 @@ def main():
     ap.add_argument("--user", required=True)
     ap.add_argument("--password", required=True)
     args = ap.parse_args()
+    remote_script_path = f"/home/{args.user}/hik_scan.sh"
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -31,7 +32,7 @@ def main():
         if err.strip():
             print(err)
 
-        script = r"""cat > /home/recomputer/hik_scan.sh <<'EOF'
+        script = """cat > __REMOTE_SCRIPT_PATH__ <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 IFACE="${1:-wlan0}"
@@ -51,7 +52,7 @@ done
 echo
 echo "Hint: Hikvision MAC OUI often starts with 44:19:B6 / BC:AD:28 / D4:E8:53"
 EOF
-chmod +x /home/recomputer/hik_scan.sh"""
+chmod +x __REMOTE_SCRIPT_PATH__""".replace("__REMOTE_SCRIPT_PATH__", remote_script_path)
         rc2, out2, err2 = run(ssh, script)
         print("[script] rc=", rc2)
         if out2.strip():
@@ -59,7 +60,7 @@ chmod +x /home/recomputer/hik_scan.sh"""
         if err2.strip():
             print(err2)
 
-        test_cmd = f"echo {args.password} | sudo -S /home/recomputer/hik_scan.sh wlan0 192.168.1.0/24"
+        test_cmd = f"echo {args.password} | sudo -S {remote_script_path} wlan0 192.168.1.0/24"
         rc3, out3, err3 = run(ssh, test_cmd)
         print("[scan] rc=", rc3)
         if out3.strip():
