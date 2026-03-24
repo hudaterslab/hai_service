@@ -18,6 +18,7 @@ from uuid import UUID, uuid4
 from urllib.parse import quote
 from urllib.parse import urlparse as urlparse_std
 import xml.etree.ElementTree as ET
+from zoneinfo import ZoneInfo
 
 import jwt
 import psycopg
@@ -60,7 +61,6 @@ DXNN_HOST_INFER_URL = os.getenv("DXNN_HOST_INFER_URL", "").strip()
 MONITOR_HTTP_TIMEOUT_SEC = max(float(os.getenv("MONITOR_HTTP_TIMEOUT_SEC", "3.0")), 0.5)
 MONITOR_RECORDER_STALE_SEC = max(int(os.getenv("MONITOR_RECORDER_STALE_SEC", "600")), 5)
 KST = timezone(timedelta(hours=9), "KST")
-SYSTEM_TZ = datetime.now().astimezone().tzinfo or timezone.utc
 KST_TIME_ONLY_RE = re.compile(r"^(?P<hour>\d{1,2}):(?P<minute>\d{2})(?::(?P<second>\d{2})(?:\.(?P<millis>\d{1,3}))?)?$")
 
 app = FastAPI(title="Edge Console Control API", version="0.1.0")
@@ -69,6 +69,17 @@ bearer = HTTPBearer(auto_error=False)
 DISCOVER_JOBS: dict[str, dict[str, Any]] = {}
 DISCOVER_JOBS_LOCK = threading.Lock()
 EVENT_LOG_LOCK = threading.Lock()
+
+
+def resolve_system_timezone():
+    tz_name = os.getenv("VMS_TIMEZONE", "Asia/Seoul").strip() or "Asia/Seoul"
+    try:
+        return ZoneInfo(tz_name)
+    except Exception:
+        return KST
+
+
+SYSTEM_TZ = resolve_system_timezone()
 
 
 def _event_log_path() -> Path:

@@ -3,6 +3,8 @@ services:
     image: postgres:16
     container_name: vms-postgres
     environment:
+      TZ: "${VMS_TIMEZONE:-Asia/Seoul}"
+      PGTZ: "${VMS_TIMEZONE:-Asia/Seoul}"
       POSTGRES_USER: vms
       POSTGRES_PASSWORD: vms
       POSTGRES_DB: vms
@@ -19,6 +21,8 @@ services:
   redis:
     image: redis:7
     container_name: vms-redis
+    environment:
+      TZ: "${VMS_TIMEZONE:-Asia/Seoul}"
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - ${VMS_DATA_ROOT:-../runtime}/redis:/data
@@ -27,6 +31,8 @@ services:
   mediamtx:
     image: bluenviron/mediamtx:1.11.3
     container_name: vms-mediamtx
+    environment:
+      TZ: "${VMS_TIMEZONE:-Asia/Seoul}"
     volumes:
       - ./mediamtx.yml:/mediamtx.yml:ro
     ports:
@@ -41,6 +47,7 @@ services:
       dockerfile: services/dxnn-host/Dockerfile
     container_name: vms-dxnn-host-infer
     environment:
+      TZ: "${VMS_TIMEZONE:-Asia/Seoul}"
       VMS_TIMEZONE: "${VMS_TIMEZONE:-Asia/Seoul}"
       DXRT_AUTO_PIP_INSTALL: "true"
       DXRT_PY_PACKAGE_PATH: /opt/dxrt/python_package
@@ -88,6 +95,7 @@ services:
       dxnn-host-infer:
         condition: service_healthy
     environment:
+      TZ: "${VMS_TIMEZONE:-Asia/Seoul}"
       DATABASE_URL: postgres://vms:vms@postgres:5432/vms?sslmode=disable
       REDIS_URL: redis://redis:6379/0
       MEDIA_MTX_HTTP_URL: http://mediamtx:8889
@@ -133,6 +141,7 @@ services:
       vms-api:
         condition: service_healthy
     environment:
+      TZ: "${VMS_TIMEZONE:-Asia/Seoul}"
       VMS_API_BASE_URL: http://vms-api:8080
       AUTH_ENABLED: "false"
     volumes:
@@ -160,6 +169,7 @@ services:
       dxnn-host-infer:
         condition: service_healthy
     environment:
+      TZ: "${VMS_TIMEZONE:-Asia/Seoul}"
       DATABASE_URL: postgres://vms:vms@postgres:5432/vms?sslmode=disable
       REDIS_URL: redis://redis:6379/0
       MEDIA_MTX_RTSP_URL: rtsp://mediamtx:8554
@@ -210,6 +220,7 @@ services:
       redis:
         condition: service_started
     environment:
+      TZ: "${VMS_TIMEZONE:-Asia/Seoul}"
       DATABASE_URL: postgres://vms:vms@postgres:5432/vms?sslmode=disable
       REDIS_URL: redis://redis:6379/0
       VMS_TIMEZONE: "${VMS_TIMEZONE:-Asia/Seoul}"
