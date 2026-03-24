@@ -79,6 +79,35 @@ RING_BUFFER_MANAGER = RingBufferManager(RECORDER_SETTINGS)
 CAMERA_RUNTIME_STATE: dict[str, dict] = {}
 CAMERA_EVENT_STATE: dict[str, dict] = {}
 DEVICE_NAME = RECORDER_SETTINGS.device_name
+EVENT_LOG_PATH = Path(os.getenv("EVENT_LOG_PATH", str(MEDIA_ROOT / "logs" / "events.jsonl"))).expanduser()
+
+
+def append_event_log(
+    *,
+    event_id,
+    camera_id,
+    event_type: str,
+    severity: str,
+    occurred_at,
+    payload: dict | None,
+    source: str,
+) -> None:
+    entry = {
+        "loggedAt": datetime.now(timezone.utc).isoformat(),
+        "source": source,
+        "eventId": str(event_id),
+        "cameraId": str(camera_id),
+        "type": event_type,
+        "severity": severity,
+        "occurredAt": occurred_at.astimezone(timezone.utc).isoformat() if isinstance(occurred_at, datetime) else None,
+        "payload": payload or {},
+    }
+    try:
+        EVENT_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with EVENT_LOG_PATH.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
 
 
 def db_conn():
@@ -1088,6 +1117,7 @@ def detect_events_once() -> int:
                                 """
                                 INSERT INTO events (camera_id, event_type, severity, occurred_at, payload_json)
                                 VALUES (%s, %s, %s, NOW(), %s)
+                                RETURNING id, camera_id, event_type, severity, occurred_at, payload_json
                                 """,
                                 (
                                     cam["id"],
@@ -1095,6 +1125,16 @@ def detect_events_once() -> int:
                                     str(ev.get("severity", "medium")),
                                     json.dumps(payload or {}),
                                 ),
+                            )
+                            event_row = cur.fetchone()
+                            append_event_log(
+                                event_id=event_row["id"],
+                                camera_id=event_row["camera_id"],
+                                event_type=event_row["event_type"],
+                                severity=event_row["severity"],
+                                occurred_at=event_row["occurred_at"],
+                                payload=event_row["payload_json"],
+                                source="recorder_event_pack",
                             )
                             created += 1
                             event_pack_created += 1
@@ -1114,6 +1154,7 @@ def detect_events_once() -> int:
                         """
                         INSERT INTO events (camera_id, event_type, severity, occurred_at, payload_json)
                         VALUES (%s, %s, %s, NOW(), %s)
+                        RETURNING id, camera_id, event_type, severity, occurred_at, payload_json
                         """,
                         (
                             cam["id"],
@@ -1121,6 +1162,16 @@ def detect_events_once() -> int:
                             str(mev.get("severity", "medium")),
                             json.dumps(payload or {}),
                         ),
+                    )
+                    event_row = cur.fetchone()
+                    append_event_log(
+                        event_id=event_row["id"],
+                        camera_id=event_row["camera_id"],
+                        event_type=event_row["event_type"],
+                        severity=event_row["severity"],
+                        occurred_at=event_row["occurred_at"],
+                        payload=event_row["payload_json"],
+                        source="recorder_model_event",
                     )
                     created += 1
 
@@ -1147,8 +1198,19 @@ def detect_events_once() -> int:
                     """
                     INSERT INTO events (camera_id, event_type, severity, occurred_at, payload_json)
                     VALUES (%s, %s, %s, NOW(), %s)
+                    RETURNING id, camera_id, event_type, severity, occurred_at, payload_json
                     """,
                     (cam["id"], event_type, severity, json.dumps(payload or {})),
+                )
+                event_row = cur.fetchone()
+                append_event_log(
+                    event_id=event_row["id"],
+                    camera_id=event_row["camera_id"],
+                    event_type=event_row["event_type"],
+                    severity=event_row["severity"],
+                    occurred_at=event_row["occurred_at"],
+                    payload=event_row["payload_json"],
+                    source="recorder_model_fallback",
                 )
                 mark_triggered(cur, cam_id)
                 created += 1

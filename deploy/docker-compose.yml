@@ -11,8 +11,8 @@ services:
       - vms_pg_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U vms -d vms"]
-      interval: 5s
-      timeout: 3s
+      interval: ${VMS_HEALTHCHECK_INTERVAL:-10m}
+      timeout: ${VMS_HEALTHCHECK_TIMEOUT:-3s}
       retries: 20
     restart: unless-stopped
 
@@ -66,8 +66,8 @@ services:
     privileged: true
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:18081/healthz || exit 1"]
-      interval: 10s
-      timeout: 3s
+      interval: ${VMS_HEALTHCHECK_INTERVAL:-10m}
+      timeout: ${VMS_HEALTHCHECK_TIMEOUT:-3s}
       retries: 10
     ports:
       - "${DXNN_HOST_PORT:-18081}:18081"
@@ -92,6 +92,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       MEDIA_MTX_HTTP_URL: http://mediamtx:8889
       VMS_TIMEZONE: "${VMS_TIMEZONE:-Asia/Seoul}"
+      EVENT_LOG_PATH: "${EVENT_LOG_PATH:-/var/lib/vms/logs/events.jsonl}"
+      MONITOR_RECORDER_STALE_SEC: "${MONITOR_RECORDER_STALE_SEC:-600}"
       VMS_CONFIG_PATH: /etc/vms/vms.yaml
       AUTH_ENABLED: "false"
       JWT_SECRET: change-me
@@ -118,8 +120,8 @@ services:
       - "8080:8080"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/healthz || exit 1"]
-      interval: 10s
-      timeout: 3s
+      interval: ${VMS_HEALTHCHECK_INTERVAL:-10m}
+      timeout: ${VMS_HEALTHCHECK_TIMEOUT:-3s}
       retries: 12
     restart: unless-stopped
 
@@ -162,6 +164,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       MEDIA_MTX_RTSP_URL: rtsp://mediamtx:8554
       VMS_TIMEZONE: "${VMS_TIMEZONE:-Asia/Seoul}"
+      EVENT_LOG_PATH: "${EVENT_LOG_PATH:-/var/lib/vms/logs/events.jsonl}"
       VMS_CONFIG_PATH: /etc/vms/vms.yaml
       MEDIA_ROOT: /var/lib/vms
       MODEL_PYTHON_BIN: python

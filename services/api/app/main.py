@@ -58,7 +58,7 @@ DEFAULT_USERS_JSON = '[{"username":"admin","password":"admin","role":"admin"},{"
 AUTH_USERS = json.loads(os.getenv("AUTH_USERS_JSON", DEFAULT_USERS_JSON))
 DXNN_HOST_INFER_URL = os.getenv("DXNN_HOST_INFER_URL", "").strip()
 MONITOR_HTTP_TIMEOUT_SEC = max(float(os.getenv("MONITOR_HTTP_TIMEOUT_SEC", "3.0")), 0.5)
-MONITOR_RECORDER_STALE_SEC = max(int(os.getenv("MONITOR_RECORDER_STALE_SEC", "20")), 5)
+MONITOR_RECORDER_STALE_SEC = max(int(os.getenv("MONITOR_RECORDER_STALE_SEC", "600")), 5)
 KST = timezone(timedelta(hours=9), "KST")
 SYSTEM_TZ = datetime.now().astimezone().tzinfo or timezone.utc
 KST_TIME_ONLY_RE = re.compile(r"^(?P<hour>\d{1,2}):(?P<minute>\d{2})(?::(?P<second>\d{2})(?:\.(?P<millis>\d{1,3}))?)?$")
@@ -68,6 +68,50 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 bearer = HTTPBearer(auto_error=False)
 DISCOVER_JOBS: dict[str, dict[str, Any]] = {}
 DISCOVER_JOBS_LOCK = threading.Lock()
+EVENT_LOG_LOCK = threading.Lock()
+
+
+def _event_log_path() -> Path:
+    raw = os.getenv("EVENT_LOG_PATH", "").strip()
+    if raw:
+        return Path(raw).expanduser()
+    return MEDIA_ROOT / "logs" / "events.jsonl"
+
+
+def _serialize_event_log_time(value: Any) -> str | None:
+    if isinstance(value, datetime):
+        return value.astimezone(timezone.utc).isoformat()
+    return None
+
+
+def append_event_log(
+    *,
+    event_id: Any,
+    camera_id: Any,
+    event_type: str,
+    severity: str,
+    occurred_at: Any,
+    payload: dict[str, Any] | None,
+    source: str,
+) -> None:
+    entry = {
+        "loggedAt": datetime.now(timezone.utc).isoformat(),
+        "source": source,
+        "eventId": str(event_id),
+        "cameraId": str(camera_id),
+        "type": event_type,
+        "severity": severity,
+        "occurredAt": _serialize_event_log_time(occurred_at),
+        "payload": payload or {},
+    }
+    path = _event_log_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with EVENT_LOG_LOCK:
+            with path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
 
 
 def _env_path_list(name: str) -> list[Path]:
@@ -1220,6 +1264,15 @@ def _store_snapshot_artifact(
         )
         artifact_row = cur.fetchone()
         conn.commit()
+    append_event_log(
+        event_id=event_row["id"],
+        camera_id=event_row["camera_id"],
+        event_type=event_row["event_type"],
+        severity=event_row["severity"],
+        occurred_at=event_row["occurred_at"],
+        payload=event_row["payload_json"],
+        source="api_manual_snapshot",
+    )
 
     return {
         "artifactId": str(artifact_row["id"]),
@@ -2858,6 +2911,15 @@ def create_event(body: CreateEventRequest, _=Depends(require_roles("admin", "ope
         )
         row = cur.fetchone()
         conn.commit()
+    append_event_log(
+        event_id=row["id"],
+        camera_id=row["camera_id"],
+        event_type=row["event_type"],
+        severity=row["severity"],
+        occurred_at=row["occurred_at"],
+        payload=row["payload_json"],
+        source="api_create_event",
+    )
     return {
         "id": str(row["id"]),
         "cameraId": str(row["camera_id"]),

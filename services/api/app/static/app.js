@@ -2624,12 +2624,6 @@ document.getElementById("aiDebugCameraId").addEventListener("change", () => {
   fetchAiDebugPreview();
 });
 
-setInterval(() => {
-  if (saveInFlightCount > 0) return;
-  // Keep periodic polling lightweight: avoid touching live iframes and ROI editor state.
-  refresh({ updateLiveGrid: false, reloadRoi: false }).catch(() => {});
-}, 5000);
-
 applyPageSectionFilter();
 initMainTabs();
 bindPanelHelpIcons();
